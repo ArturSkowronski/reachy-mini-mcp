@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reachy-mini-mcp"
+version = "0.1.0"
+description = "Basic MCP for Reachy Mini"
+requires-python = ">=3.13"
+authors = [
+    {name = "Artur Skowronski", email = "me@arturskowronski.com"}
+]
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp[cli]>=1.25.0",
+]
