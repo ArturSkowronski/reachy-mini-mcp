@@ -1,5 +1,7 @@
 # reachy-mini-mcp
 
+![CI](https://github.com/ArturSkowronski/reachy-mini-mcp/actions/workflows/ci.yml/badge.svg)
+
 A Model Context Protocol (MCP) server for controlling the Reachy Mini robot. This MCP server provides tools to interact with and control Reachy Mini through the MCP interface.
 
 ## Description
@@ -36,6 +38,27 @@ pytest
 Run tests with verbose output:
 ```bash
 pytest -v
+```
+
+## Pre-commit Hooks
+
+This project uses pre-commit hooks to run tests automatically on commit. To set up:
+
+1. Install pre-commit (included in dev dependencies):
+```bash
+pip install -e ".[dev]"
+```
+
+2. Install the git hooks:
+```bash
+pre-commit install
+```
+
+Now tests will run automatically before each commit. If tests fail, the commit will be blocked.
+
+To run hooks manually:
+```bash
+pre-commit run --all-files
 ```
 
 ## Author
