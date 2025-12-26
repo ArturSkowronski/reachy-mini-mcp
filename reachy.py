@@ -38,6 +38,18 @@ async def do_barrel_roll() -> str:
     return "Did the barrel roll2!"
 
 
+@mcp.tool()
+async def say(text: str) -> str:
+    """Make Reachy Mini speak the given text.
+    
+    Args:
+        text: The text to speak
+    """
+    with ReachyMini() as mini:
+        mini.speaker.say(text)
+    return f"Reachy said: {text}"
+
+
 def main():
     mcp.run(transport="stdio")
 
