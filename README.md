@@ -11,11 +11,31 @@ This project enables AI assistants and other MCP-compatible clients to control a
 ### `do_barrel_roll`
 Performs a barrel roll movement with the Reachy Mini robot by tilting and moving the head.
 
+### `say`
+Makes Reachy Mini speak the given text using the robot's speaker.
+
 ## Development
 
 For debugging and testing robot movements directly, use the `reachy_debug.py` script:
 ```bash
 python reachy_debug.py
+```
+
+## Testing
+
+Install development dependencies:
+```bash
+pip install -e ".[dev]"
+```
+
+Run tests:
+```bash
+pytest
+```
+
+Run tests with verbose output:
+```bash
+pytest -v
 ```
 
 ## Author
