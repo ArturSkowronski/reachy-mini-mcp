@@ -39,15 +39,255 @@ async def do_barrel_roll() -> str:
 
 
 @mcp.tool()
-async def say(text: str) -> str:
-    """Make Reachy Mini speak the given text.
-    
+async def play_sound(sound_name: str) -> str:
+    """Play a built-in sound on Reachy Mini.
+
+    Available sounds: wake_up, go_sleep, confused1, impatient1, dance1, count
+
     Args:
-        text: The text to speak
+        sound_name: Name of the sound to play (without .wav extension)
     """
     with ReachyMini() as mini:
-        mini.speaker.say(text)
-    return f"Reachy said: {text}"
+        mini.media.play_sound(f"{sound_name}.wav")
+    return f"Reachy played: {sound_name}"
+
+
+@mcp.tool()
+async def express_emotion(emoji: str) -> str:
+    """Make Reachy Mini express an emotion based on an emoji character.
+
+    The robot will move its head and antennas to reflect the emotion,
+    and play corresponding sounds. This can be used to make the robot
+    react to chat messages in real-time.
+
+    Supported emojis:
+    - 😊 happy: antennas up, cheerful pose, dance sound
+    - 😕 confused: head tilt, asymmetric antennas, confused sound
+    - 😤 impatient: rapid antenna movements, impatient sound
+    - 😴 sleepy: sleep pose with sound
+    - 👋 wave: greeting animation with wake up sound
+    - 🤔 thinking: contemplative head tilt, antennas spread
+    - 😮 surprised: antennas high, head back
+    - 😢 sad: antennas and head down
+    - 🎉 celebrate: energetic wiggle, dance sound
+    - 😐 neutral: return to rest position
+
+    Args:
+        emoji: The emoji character representing the emotion
+    """
+    with ReachyMini() as mini:
+        # Emotion mappings
+        if emoji == "😊":  # Happy
+            mini.goto_target(
+                head=create_head_pose(z=15, roll=5, pitch=-10, mm=True, degrees=True),
+                antennas=[0.8, 0.8],
+                duration=0.8
+            )
+            mini.media.play_sound("dance1.wav")
+            emotion = "happy"
+
+        elif emoji == "😕":  # Confused
+            mini.goto_target(
+                head=create_head_pose(z=10, roll=15, pitch=5, mm=True, degrees=True),
+                antennas=[0.5, -0.3],
+                duration=0.6
+            )
+            mini.media.play_sound("confused1.wav")
+            emotion = "confused"
+
+        elif emoji == "😤":  # Impatient
+            # Rapid antenna movements
+            mini.goto_target(antennas=[0.7, -0.7], duration=0.2)
+            mini.goto_target(antennas=[-0.7, 0.7], duration=0.2)
+            mini.goto_target(antennas=[0.7, -0.7], duration=0.2)
+            mini.media.play_sound("impatient1.wav")
+            emotion = "impatient"
+
+        elif emoji == "😴":  # Sleepy
+            mini.goto_sleep()
+            emotion = "sleepy"
+
+        elif emoji == "👋":  # Wave/Greeting
+            mini.wake_up()
+            emotion = "greeting"
+
+        elif emoji == "🤔":  # Thinking
+            mini.goto_target(
+                head=create_head_pose(z=10, roll=-10, pitch=10, mm=True, degrees=True),
+                antennas=[0.6, -0.6],
+                duration=1.0
+            )
+            emotion = "thinking"
+
+        elif emoji == "😮":  # Surprised
+            mini.goto_target(
+                head=create_head_pose(z=5, pitch=-15, mm=True, degrees=True),
+                antennas=[1.2, 1.2],
+                duration=0.4
+            )
+            emotion = "surprised"
+
+        elif emoji == "😢":  # Sad
+            mini.goto_target(
+                head=create_head_pose(z=20, pitch=15, mm=True, degrees=True),
+                antennas=[-0.5, -0.5],
+                duration=1.2
+            )
+            emotion = "sad"
+
+        elif emoji == "🎉":  # Celebrate
+            # Wiggle celebration
+            mini.goto_target(
+                head=create_head_pose(z=10, roll=10, mm=True, degrees=True),
+                antennas=[0.8, -0.8],
+                duration=0.3
+            )
+            mini.goto_target(
+                head=create_head_pose(z=10, roll=-10, mm=True, degrees=True),
+                antennas=[-0.8, 0.8],
+                duration=0.3
+            )
+            mini.media.play_sound("dance1.wav")
+            emotion = "celebrate"
+
+        elif emoji == "😐":  # Neutral
+            mini.goto_target(
+                head=create_head_pose(),
+                antennas=[0, 0],
+                duration=0.8
+            )
+            emotion = "neutral"
+
+        else:
+            return f"Unsupported emoji: {emoji}. Please use one of the supported emojis."
+
+    return f"Reachy expressed: {emotion} ({emoji})"
+
+
+@mcp.tool()
+async def look_at_point(x: float, y: float, z: float, duration: float = 1.0) -> str:
+    """Make Reachy Mini look at a specific point in 3D space.
+
+    The robot will orient its head to look at the specified coordinates
+    in the world frame (robot's base coordinate system).
+
+    Args:
+        x: X coordinate in meters (forward/backward)
+        y: Y coordinate in meters (left/right)
+        z: Z coordinate in meters (up/down)
+        duration: Movement duration in seconds (default: 1.0)
+    """
+    with ReachyMini() as mini:
+        mini.look_at_world(x, y, z, duration=duration)
+    return f"Reachy looking at point ({x}, {y}, {z})"
+
+
+@mcp.tool()
+async def move_antennas(right: float, left: float, duration: float = 0.5) -> str:
+    """Move Reachy Mini's antennas to specific positions.
+
+    The antennas can be used to express emotions or indicate direction.
+    Range: -3.14 to 3.14 radians for each antenna.
+
+    Args:
+        right: Right antenna position in radians
+        left: Left antenna position in radians
+        duration: Movement duration in seconds (default: 0.5)
+    """
+    # Clamp values to valid range
+    right = max(-3.14, min(3.14, right))
+    left = max(-3.14, min(3.14, left))
+
+    with ReachyMini() as mini:
+        mini.goto_target(antennas=[right, left], duration=duration)
+    return f"Moved antennas to right={right:.2f}, left={left:.2f}"
+
+
+@mcp.tool()
+async def reset_position(duration: float = 1.5) -> str:
+    """Reset Reachy Mini to neutral rest position.
+
+    Returns the robot's head and antennas to the default resting pose.
+
+    Args:
+        duration: Movement duration in seconds (default: 1.5)
+    """
+    with ReachyMini() as mini:
+        mini.goto_target(
+            head=create_head_pose(),
+            antennas=[0, 0],
+            duration=duration
+        )
+    return "Reachy reset to neutral position"
+
+
+@mcp.tool()
+async def wake_up() -> str:
+    """Wake up Reachy Mini with the built-in wake up animation and sound.
+
+    This is a greeting behavior that can be used when starting interaction.
+    """
+    with ReachyMini() as mini:
+        mini.wake_up()
+    return "Reachy woke up!"
+
+
+@mcp.tool()
+async def go_to_sleep() -> str:
+    """Put Reachy Mini to sleep with the built-in sleep animation and sound.
+
+    This is a farewell behavior that can be used when ending interaction.
+    """
+    with ReachyMini() as mini:
+        mini.goto_sleep()
+    return "Reachy went to sleep"
+
+
+@mcp.tool()
+async def detect_sound_direction() -> str:
+    """Detect the direction of a sound source using Reachy's microphone array.
+
+    Returns the angle in radians where sound is coming from and whether
+    speech was detected.
+    - Angle: 0 = left, π/2 = front/back, π = right
+    """
+    with ReachyMini() as mini:
+        angle, speech_detected = mini.media.audio.get_DoA()
+
+    # Convert to degrees for easier understanding
+    angle_degrees = angle * 180 / 3.14159
+
+    speech_status = "speech detected" if speech_detected else "no speech detected"
+    return f"Sound from {angle:.2f} radians ({angle_degrees:.1f}°), {speech_status}"
+
+
+@mcp.tool()
+async def move_head(x: float = 0, y: float = 0, z: float = 0,
+                    roll: float = 0, pitch: float = 0, yaw: float = 0,
+                    duration: float = 1.0) -> str:
+    """Move Reachy Mini's head to a specific pose.
+
+    Control the head position and orientation with 6 degrees of freedom.
+
+    Args:
+        x: Forward/backward offset in millimeters (default: 0)
+        y: Left/right offset in millimeters (default: 0)
+        z: Up/down offset in millimeters (default: 0)
+        roll: Roll rotation in degrees (default: 0)
+        pitch: Pitch rotation in degrees (default: 0)
+        yaw: Yaw rotation in degrees (default: 0)
+        duration: Movement duration in seconds (default: 1.0)
+    """
+    with ReachyMini() as mini:
+        pose = create_head_pose(
+            x=x, y=y, z=z,
+            roll=roll, pitch=pitch, yaw=yaw,
+            mm=True,
+            degrees=True
+        )
+        mini.goto_target(head=pose, duration=duration)
+
+    return f"Moved head to pos({x}, {y}, {z})mm, rot({roll}, {pitch}, {yaw})°"
 
 
 def main():
