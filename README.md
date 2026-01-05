@@ -23,6 +23,17 @@ Performs a barrel roll movement with the Reachy Mini robot by tilting and moving
 ### `play_sound`
 Play a built-in sound on Reachy Mini. Available sounds: `wake_up`, `go_sleep`, `confused1`, `impatient1`, `dance1`, `count`.
 
+### `speak_text`
+Generate speech from text via the ElevenLabs API and play it through Reachy Mini's speaker.
+
+Required environment variables:
+- `ELEVENLABS_API_KEY`
+- `ELEVENLABS_VOICE_ID`
+
+Optional environment variables:
+- `ELEVENLABS_MODEL_ID` (default: `eleven_multilingual_v2`)
+- `ELEVENLABS_OUTPUT_FORMAT` (default: `wav_44100`)
+
 ### `express_emotion`
 Make Reachy Mini express an emotion based on an emoji character. The robot will move its head and antennas to reflect the emotion, and play corresponding sounds.
 
@@ -81,6 +92,17 @@ Detect the direction of a sound source using Reachy's microphone array. Returns 
 For debugging and testing robot movements directly, use the `reachy_debug.py` script:
 ```bash
 python reachy_debug.py
+```
+
+## ElevenLabs Setup
+
+1. Create an API key in ElevenLabs and export it as `ELEVENLABS_API_KEY`
+2. Pick a voice in ElevenLabs and export its id as `ELEVENLABS_VOICE_ID`
+
+Example:
+```bash
+export ELEVENLABS_API_KEY="..."
+export ELEVENLABS_VOICE_ID="..."
 ```
 
 ## Testing
