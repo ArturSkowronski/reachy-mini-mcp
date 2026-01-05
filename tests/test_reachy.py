@@ -1,9 +1,17 @@
 """Tests for reachy.py MCP tools."""
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from reachy import do_barrel_roll, wake_up, detect_sound_direction, move_antennas, move_head, express_emotion
+from reachy import (
+    detect_sound_direction,
+    do_barrel_roll,
+    express_emotion,
+    move_antennas,
+    move_head,
+    speak_text,
+    wake_up,
+)
 
 @pytest.mark.asyncio
 async def test_wake_up():
@@ -568,3 +576,30 @@ async def test_express_emotion_unsupported():
     assert "Unsupported emoji: 🔥" in result
     assert "Please use one of the supported emojis" in result
 
+
+@pytest.mark.asyncio
+async def test_speak_text_plays_audio_and_cleans_temp_file(tmp_path):
+    """Test speak_text generates audio and plays it via Reachy media."""
+    temp_wav = tmp_path / "out.wav"
+    temp_wav.write_bytes(b"not-a-real-wav")
+
+    mock_mini = MagicMock()
+    mock_media = MagicMock()
+    mock_media.play_sound = MagicMock()
+    mock_mini.media = mock_media
+
+    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
+    mock_mini.__exit__ = MagicMock(return_value=False)
+
+    mock_reachy_class = MagicMock(return_value=mock_mini)
+
+    with patch("reachy.ReachyMini", mock_reachy_class), patch(
+        "reachy.load_elevenlabs_config", return_value=MagicMock()
+    ), patch(
+        "reachy.elevenlabs_tts_to_temp_wav", new=AsyncMock(return_value=str(temp_wav))
+    ):
+        result = await speak_text("Hello!")
+
+    assert result == "Reachy spoke the provided text via ElevenLabs."
+    mock_media.play_sound.assert_called_once_with(str(temp_wav))
+    assert not temp_wav.exists()

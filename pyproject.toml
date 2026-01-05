@@ -25,4 +25,4 @@ dev = [
 ]
 
 [tool.setuptools]
-py-modules = ["reachy"]
+py-modules = ["reachy", "reachy_elevenlabs"]
