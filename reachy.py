@@ -374,7 +374,7 @@ async def scan_surroundings(
     steps: int = 5,
     yaw_range: float = 120.0,
     quality: int = 80,
-) -> list[str | Image]:
+) -> list:
     """Scan the robot's surroundings by panning the camera across multiple angles.
 
     Captures images at evenly spaced yaw positions across the specified range,
