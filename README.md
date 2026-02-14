@@ -13,7 +13,7 @@ MCP server that lets AI assistants control the [Reachy Mini](https://www.pollen-
 AI Assistant  --stdio-->  MCP Server (reachy.py)  -->  ReachyMini SDK  -->  Robot / Simulator
 ```
 
-The server exposes 13 tools via the [Model Context Protocol](https://modelcontextprotocol.io). An AI assistant calls these tools to see through the robot's camera, move the robot, express emotions, play sounds, or detect audio direction -- no robotics knowledge needed on the AI side.
+The server exposes 15 tools via the [Model Context Protocol](https://modelcontextprotocol.io). An AI assistant calls these tools to see through the robot's camera, move the robot, express emotions, play sounds, or detect audio direction -- no robotics knowledge needed on the AI side.
 
 ## Installation
 
@@ -99,6 +99,8 @@ Optional overrides: `ELEVENLABS_MODEL_ID` (default: `eleven_multilingual_v2`), `
 | `detect_sound_direction` | Microphone array direction-of-arrival + speech detection |
 | `wake_up` | Built-in greeting animation with sound |
 | `go_to_sleep` | Built-in farewell animation with sound |
+| `nod` | Nod head up and down to indicate "yes" or agreement |
+| `shake_head` | Shake head left and right to indicate "no" or disagreement |
 | `reset_position` | Return head and antennas to neutral rest pose |
 | `do_barrel_roll` | Choreographed head tilt + antenna wiggle sequence |
 
