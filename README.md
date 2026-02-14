@@ -117,20 +117,6 @@ Optional overrides: `ELEVENLABS_MODEL_ID` (default: `eleven_multilingual_v2`), `
 | `🎉` | celebrate | energetic wiggle, dance sound |
 | `😐` | neutral | return to rest position |
 
-## Use cases
-
-**Interactive AI companion** -- Connect to Claude or another LLM and have natural conversations where the robot physically reacts to what's being said. The AI can express emotions, nod, look around, and respond with body language.
-
-**Accessible robotics education** -- Students interact with the robot through natural language instead of writing low-level control code. Ask the AI to "make the robot look surprised" or "tilt the head 15 degrees to the right" and it translates to SDK calls.
-
-**Trade show / exhibit demos** -- Set up the robot at a booth with a microphone. It detects sound direction, turns toward speakers, reacts with emotions, and responds with TTS -- all orchestrated by an AI assistant.
-
-**Telepresence and remote interaction** -- Control the robot remotely through an AI-powered chat interface. The emotion system gives remote participants a physical presence that goes beyond a video call.
-
-**Rapid prototyping for HRI research** -- Test human-robot interaction scenarios without writing robot code. Describe behaviors in natural language, iterate quickly on emotion mappings and movement sequences.
-
-**Multimodal AI agent** -- Combine with vision MCP servers to create an agent that sees, hears, speaks, and moves. The robot becomes the physical embodiment of an AI system.
-
 ## Development
 
 ```bash
