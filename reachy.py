@@ -1,8 +1,11 @@
+import json
 import os
 from typing import Any
 
 import cv2
-from mcp.server.fastmcp import FastMCP, Image
+from mcp.server.fastmcp import Context, FastMCP, Image
+from mcp.server.fastmcp.prompts.base import AssistantMessage, UserMessage
+from mcp.types import ToolAnnotations
 from reachy_mini import ReachyMini
 from reachy_mini.utils import create_head_pose
 
@@ -11,8 +14,170 @@ from reachy_elevenlabs import elevenlabs_tts_to_temp_wav, load_elevenlabs_config
 # Initialize FastMCP server
 mcp = FastMCP("reachy-mini-mcp")
 
+# ---------------------------------------------------------------------------
+# Tool annotation presets
+# ---------------------------------------------------------------------------
+READ_ONLY = ToolAnnotations(
+    readOnlyHint=True,
+    destructiveHint=False,
+    idempotentHint=True,
+    openWorldHint=False,
+)
+MOVEMENT = ToolAnnotations(
+    readOnlyHint=False,
+    destructiveHint=False,
+    idempotentHint=True,
+    openWorldHint=False,
+)
+EXTERNAL = ToolAnnotations(
+    readOnlyHint=False,
+    destructiveHint=False,
+    idempotentHint=True,
+    openWorldHint=True,
+)
 
-@mcp.tool()
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+EMOTIONS = {
+    "😊": "happy",
+    "😕": "confused",
+    "😤": "impatient",
+    "😴": "sleepy",
+    "👋": "greeting",
+    "🤔": "thinking",
+    "😮": "surprised",
+    "😢": "sad",
+    "🎉": "celebrate",
+    "😐": "neutral",
+}
+
+SOUNDS = ["wake_up", "go_sleep", "confused1", "impatient1", "dance1", "count"]
+
+# ---------------------------------------------------------------------------
+# MCP Resources — discoverable robot metadata
+# ---------------------------------------------------------------------------
+
+
+@mcp.resource("reachy://emotions")
+def get_emotions() -> str:
+    """Supported emoji-to-emotion mappings for express_emotion tool."""
+    return json.dumps(
+        {emoji: emotion for emoji, emotion in EMOTIONS.items()},
+        ensure_ascii=False,
+    )
+
+
+@mcp.resource("reachy://sounds")
+def get_sounds() -> str:
+    """Available built-in sounds for play_sound tool."""
+    return json.dumps(SOUNDS)
+
+
+@mcp.resource("reachy://limits")
+def get_limits() -> str:
+    """Physical limits and ranges for the robot's actuators."""
+    return json.dumps(
+        {
+            "antennas": {"min_radians": -3.14, "max_radians": 3.14},
+            "head_position": {"unit": "mm", "axes": ["x", "y", "z"]},
+            "head_rotation": {"unit": "degrees", "axes": ["roll", "pitch", "yaw"]},
+            "camera": {"resolution": "1280x720", "format": "BGR"},
+        }
+    )
+
+
+@mcp.resource("reachy://capabilities")
+def get_capabilities() -> str:
+    """Summary of robot capabilities grouped by category."""
+    return json.dumps(
+        {
+            "vision": ["capture_image", "scan_surroundings", "track_face"],
+            "movement": [
+                "move_head",
+                "move_antennas",
+                "look_at_point",
+                "nod",
+                "shake_head",
+            ],
+            "expression": ["express_emotion", "do_barrel_roll"],
+            "audio": ["play_sound", "speak_text", "detect_sound_direction"],
+            "lifecycle": ["wake_up", "go_to_sleep", "reset_position"],
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# MCP Prompts — reusable interaction templates
+# ---------------------------------------------------------------------------
+
+
+@mcp.prompt()
+def greet_user(user_name: str = "friend") -> list:
+    """Greet a user with Reachy Mini — wake up, look around, and say hello."""
+    return [
+        UserMessage(f"Please greet {user_name} using the robot."),
+        AssistantMessage(
+            "I'll wake up Reachy, express happiness, and nod to greet "
+            f"{user_name}. Let me use wake_up, then express_emotion with 😊, "
+            "and finally nod."
+        ),
+    ]
+
+
+@mcp.prompt()
+def explore_room() -> list:
+    """Scan the surroundings and describe what Reachy Mini sees."""
+    return [
+        UserMessage(
+            "Use the robot's camera to look around the room and describe "
+            "what you see in detail."
+        ),
+        AssistantMessage(
+            "I'll scan the surroundings by panning the camera across multiple "
+            "angles, then describe each view. Let me call scan_surroundings."
+        ),
+    ]
+
+
+@mcp.prompt()
+def react_to_conversation() -> list:
+    """Guide Reachy to physically react during conversation with gestures."""
+    return [
+        UserMessage(
+            "As we chat, use the robot to physically react to what I say. "
+            "Nod when you agree, shake your head when you disagree, and use "
+            "emoji emotions to express how you feel about the topic."
+        ),
+        AssistantMessage(
+            "I'll use Reachy's gestures throughout our conversation: nod for "
+            "agreement, shake_head for disagreement, and express_emotion with "
+            "appropriate emojis. I'm ready — what would you like to talk about?"
+        ),
+    ]
+
+
+@mcp.prompt()
+def find_person() -> list:
+    """Use camera and face tracking to find and follow a person."""
+    return [
+        UserMessage(
+            "Find a person in the room using the camera and turn to face them."
+        ),
+        AssistantMessage(
+            "I'll use capture_image to look for a person, then track_face to "
+            "orient the robot toward them. If no one is visible, I'll use "
+            "scan_surroundings to search the room. Let me start."
+        ),
+    ]
+
+
+# ---------------------------------------------------------------------------
+# MCP Tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(annotations=MOVEMENT)
 async def do_barrel_roll() -> str:
     """Do the barrel roll with Reachy."""
 
@@ -35,7 +200,7 @@ async def do_barrel_roll() -> str:
     return "Did the barrel roll!"
 
 
-@mcp.tool()
+@mcp.tool(annotations=MOVEMENT)
 async def play_sound(sound_name: str) -> str:
     """Play a built-in sound on Reachy Mini.
 
@@ -49,7 +214,7 @@ async def play_sound(sound_name: str) -> str:
     return f"Reachy played: {sound_name}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=EXTERNAL)
 async def speak_text(
     text: str,
     voice_id: str | None = None,
@@ -111,7 +276,7 @@ async def speak_text(
     return "Reachy spoke the provided text via ElevenLabs."
 
 
-@mcp.tool()
+@mcp.tool(annotations=MOVEMENT)
 async def express_emotion(emoji: str) -> str:
     """Make Reachy Mini express an emotion based on an emoji character.
 
@@ -221,7 +386,7 @@ async def express_emotion(emoji: str) -> str:
     return f"Reachy expressed: {emotion} ({emoji})"
 
 
-@mcp.tool()
+@mcp.tool(annotations=MOVEMENT)
 async def look_at_point(x: float, y: float, z: float, duration: float = 1.0) -> str:
     """Make Reachy Mini look at a specific point in 3D space.
 
@@ -239,7 +404,7 @@ async def look_at_point(x: float, y: float, z: float, duration: float = 1.0) -> 
     return f"Reachy looking at point ({x}, {y}, {z})"
 
 
-@mcp.tool()
+@mcp.tool(annotations=MOVEMENT)
 async def move_antennas(right: float, left: float, duration: float = 0.5) -> str:
     """Move Reachy Mini's antennas to specific positions.
 
@@ -260,7 +425,7 @@ async def move_antennas(right: float, left: float, duration: float = 0.5) -> str
     return f"Moved antennas to right={right:.2f}, left={left:.2f}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=MOVEMENT)
 async def reset_position(duration: float = 1.5) -> str:
     """Reset Reachy Mini to neutral rest position.
 
@@ -274,7 +439,7 @@ async def reset_position(duration: float = 1.5) -> str:
     return "Reachy reset to neutral position"
 
 
-@mcp.tool()
+@mcp.tool(annotations=MOVEMENT)
 async def wake_up() -> str:
     """Wake up Reachy Mini with the built-in wake up animation and sound.
 
@@ -285,7 +450,7 @@ async def wake_up() -> str:
     return "Reachy woke up!"
 
 
-@mcp.tool()
+@mcp.tool(annotations=MOVEMENT)
 async def go_to_sleep() -> str:
     """Put Reachy Mini to sleep with the built-in sleep animation and sound.
 
@@ -296,7 +461,7 @@ async def go_to_sleep() -> str:
     return "Reachy went to sleep"
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 async def detect_sound_direction() -> str:
     """Detect the direction of a sound source using Reachy's microphone array.
 
@@ -314,7 +479,7 @@ async def detect_sound_direction() -> str:
     return f"Sound from {angle:.2f} radians ({angle_degrees:.1f}°), {speech_status}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=MOVEMENT)
 async def move_head(
     x: float = 0,
     y: float = 0,
@@ -346,7 +511,7 @@ async def move_head(
     return f"Moved head to pos({x}, {y}, {z})mm, rot({roll}, {pitch}, {yaw})°"
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 async def capture_image(quality: int = 90) -> Image:
     """Capture an image from Reachy Mini's built-in camera.
 
@@ -369,11 +534,12 @@ async def capture_image(quality: int = 90) -> Image:
     return Image(data=jpeg_bytes.tobytes(), format="jpeg")
 
 
-@mcp.tool()
+@mcp.tool(annotations=MOVEMENT)
 async def scan_surroundings(
     steps: int = 5,
     yaw_range: float = 120.0,
     quality: int = 80,
+    ctx: Context | None = None,
 ) -> list:
     """Scan the robot's surroundings by panning the camera across multiple angles.
 
@@ -393,9 +559,15 @@ async def scan_surroundings(
     half = yaw_range / 2
     yaw_positions = [-half + i * yaw_range / (steps - 1) for i in range(steps)]
 
+    if ctx:
+        await ctx.info(f"Starting scan: {steps} positions across {yaw_range:.0f}°")
+
     result: list = []
     with ReachyMini() as mini:
         for i, yaw in enumerate(yaw_positions, 1):
+            if ctx:
+                await ctx.report_progress(progress=i, total=steps + 1)
+
             mini.goto_target(
                 head=create_head_pose(yaw=yaw, mm=True, degrees=True),
                 duration=0.6,
@@ -423,6 +595,9 @@ async def scan_surroundings(
             duration=0.6,
         )
 
+        if ctx:
+            await ctx.report_progress(progress=steps + 1, total=steps + 1)
+
     result.append(
         f"Scan complete: {steps} positions across {yaw_range:.0f}° "
         f"(from {yaw_positions[0]:+.0f}° to {yaw_positions[-1]:+.0f}°)"
@@ -430,7 +605,7 @@ async def scan_surroundings(
     return result
 
 
-@mcp.tool()
+@mcp.tool(annotations=MOVEMENT)
 async def nod(cycles: int = 2, speed: float = 0.3) -> str:
     """Nod Reachy Mini's head up and down to indicate "yes" or agreement.
 
@@ -462,7 +637,7 @@ async def nod(cycles: int = 2, speed: float = 0.3) -> str:
     return f"Reachy nodded ({cycles}x)"
 
 
-@mcp.tool()
+@mcp.tool(annotations=MOVEMENT)
 async def shake_head(cycles: int = 2, speed: float = 0.3) -> str:
     """Shake Reachy Mini's head left and right to indicate "no" or disagreement.
 
@@ -513,8 +688,8 @@ _HORIZONTAL_FOV = 65.0  # degrees
 _VERTICAL_FOV = 40.0  # degrees
 
 
-@mcp.tool()
-async def track_face(duration: float = 0.4) -> str:
+@mcp.tool(annotations=MOVEMENT)
+async def track_face(duration: float = 0.4, ctx: Context | None = None) -> str:
     """Detect a face using the camera and turn the robot's head toward it.
 
     Captures a frame, runs face detection, and moves the head so the
@@ -545,6 +720,8 @@ async def track_face(duration: float = 0.4) -> str:
         )
 
         if len(faces) == 0:
+            if ctx:
+                await ctx.info("No face detected in frame")
             return "No face detected"
 
         # Pick the largest face by area and scale coords back
@@ -561,6 +738,12 @@ async def track_face(duration: float = 0.4) -> str:
         # Convert to degrees
         yaw = -(offset_x / img_w) * _HORIZONTAL_FOV
         pitch = (offset_y / img_h) * _VERTICAL_FOV
+
+        if ctx:
+            await ctx.info(
+                f"Face found at ({face_center_x:.0f}, {face_center_y:.0f})px, "
+                f"moving yaw={yaw:+.1f}° pitch={pitch:+.1f}°"
+            )
 
         mini.goto_target(
             head=create_head_pose(yaw=yaw, pitch=pitch, mm=True, degrees=True),
