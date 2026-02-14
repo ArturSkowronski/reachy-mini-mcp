@@ -518,18 +518,14 @@ async def test_speak_text_plays_audio_and_cleans_temp_file(mock_reachy, tmp_path
 # ---------------------------------------------------------------------------
 
 
-async def test_capture_image(mock_reachy):
+async def test_capture_image(mock_reachy_with_frame):
     """Test capture_image returns an Image with JPEG data."""
-    import numpy as np
     from mcp.server.fastmcp import Image
-
-    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-    mock_reachy.media.get_frame.return_value = fake_frame
 
     result = await capture_image()
 
     assert isinstance(result, Image)
-    mock_reachy.media.get_frame.assert_called_once()
+    mock_reachy_with_frame.media.get_frame.assert_called_once()
 
 
 async def test_capture_image_camera_unavailable(mock_reachy):
@@ -540,13 +536,9 @@ async def test_capture_image_camera_unavailable(mock_reachy):
         await capture_image()
 
 
-async def test_capture_image_custom_quality(mock_reachy):
+async def test_capture_image_custom_quality(mock_reachy_with_frame):
     """Test capture_image clamps quality to valid range."""
-    import numpy as np
     from unittest.mock import patch
-
-    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-    mock_reachy.media.get_frame.return_value = fake_frame
 
     with patch("reachy.cv2.imencode", wraps=__import__("cv2").imencode) as mock_enc:
         await capture_image(quality=150)
@@ -562,13 +554,9 @@ async def test_capture_image_custom_quality(mock_reachy):
 # ---------------------------------------------------------------------------
 
 
-async def test_scan_surroundings_default(mock_reachy, mock_create_head_pose):
+async def test_scan_surroundings_default(mock_reachy_with_frame, mock_create_head_pose):
     """Test scan_surroundings captures 5 frames across 120° and returns to center."""
-    import numpy as np
     from mcp.server.fastmcp import Image
-
-    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-    mock_reachy.media.get_frame.return_value = fake_frame
 
     result = await scan_surroundings()
 
@@ -581,17 +569,14 @@ async def test_scan_surroundings_default(mock_reachy, mock_create_head_pose):
     # Summary is last
     assert "Scan complete: 5 positions across 120°" in result[-1]
     # 5 captures + 1 return-to-center = 6 goto_target calls
-    assert mock_reachy.goto_target.call_count == 6
-    assert mock_reachy.media.get_frame.call_count == 5
+    assert mock_reachy_with_frame.goto_target.call_count == 6
+    assert mock_reachy_with_frame.media.get_frame.call_count == 5
 
 
-async def test_scan_surroundings_custom_steps(mock_reachy, mock_create_head_pose):
+async def test_scan_surroundings_custom_steps(
+    mock_reachy_with_frame, mock_create_head_pose
+):
     """Test scan_surroundings with 3 steps across 90°."""
-    import numpy as np
-
-    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-    mock_reachy.media.get_frame.return_value = fake_frame
-
     result = await scan_surroundings(steps=3, yaw_range=90.0)
 
     # 3 text labels + 3 images + 1 summary = 7 items
@@ -599,16 +584,13 @@ async def test_scan_surroundings_custom_steps(mock_reachy, mock_create_head_pose
     assert "3 positions across 90°" in result[-1]
     assert "from -45° to +45°" in result[-1]
     # 3 captures + 1 return = 4 goto_target calls
-    assert mock_reachy.goto_target.call_count == 4
+    assert mock_reachy_with_frame.goto_target.call_count == 4
 
 
-async def test_scan_surroundings_clamps_params(mock_reachy, mock_create_head_pose):
+async def test_scan_surroundings_clamps_params(
+    mock_reachy_with_frame, mock_create_head_pose
+):
     """Test that steps and yaw_range are clamped to valid bounds."""
-    import numpy as np
-
-    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-    mock_reachy.media.get_frame.return_value = fake_frame
-
     result = await scan_surroundings(steps=100, yaw_range=500.0)
 
     # Steps clamped to 9, yaw_range clamped to 180
@@ -628,13 +610,10 @@ async def test_scan_surroundings_frame_failure(mock_reachy, mock_create_head_pos
     assert "Scan complete" in result[2]
 
 
-async def test_scan_surroundings_yaw_positions(mock_reachy, mock_create_head_pose):
+async def test_scan_surroundings_yaw_positions(
+    mock_reachy_with_frame, mock_create_head_pose
+):
     """Test that yaw positions are evenly distributed across the range."""
-    import numpy as np
-
-    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
-    mock_reachy.media.get_frame.return_value = fake_frame
-
     await scan_surroundings(steps=3, yaw_range=60.0)
 
     # Expected yaw positions: -30, 0, +30
