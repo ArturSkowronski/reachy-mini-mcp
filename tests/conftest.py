@@ -42,3 +42,16 @@ def mock_create_head_pose():
     mock_pose = MagicMock(name="head_pose")
     with patch("reachy.create_head_pose", return_value=mock_pose) as mock_fn:
         yield mock_fn
+
+
+@pytest.fixture
+def mock_reachy_with_frame(mock_reachy):
+    """Mocked ReachyMini with a fake camera frame pre-configured.
+
+    Sets ``media.get_frame()`` to return a 480x640 black BGR numpy frame.
+    """
+    import numpy as np
+
+    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    mock_reachy.media.get_frame.return_value = fake_frame
+    return mock_reachy

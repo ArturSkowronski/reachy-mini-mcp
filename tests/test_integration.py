@@ -22,6 +22,7 @@ EXPECTED_TOOLS = {
     "look_at_point",
     "move_antennas",
     "reset_position",
+    "scan_surroundings",
     "wake_up",
     "go_to_sleep",
     "detect_sound_direction",
