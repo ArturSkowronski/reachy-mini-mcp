@@ -339,12 +339,18 @@ async def test_move_head_negative_values(mock_reachy, mock_create_head_pose):
     assert "pos(-10, -5, -15)mm" in result
     assert "rot(-10, -20, -30)°" in result
     mock_create_head_pose.assert_called_once_with(
-        x=-10, y=-5, z=-15,
-        roll=-10, pitch=-20, yaw=-30,
-        mm=True, degrees=True,
+        x=-10,
+        y=-5,
+        z=-15,
+        roll=-10,
+        pitch=-20,
+        yaw=-30,
+        mm=True,
+        degrees=True,
     )
     mock_reachy.goto_target.assert_called_once_with(
-        head=mock_create_head_pose.return_value, duration=1.0,
+        head=mock_create_head_pose.return_value,
+        duration=1.0,
     )
 
 
