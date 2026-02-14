@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import Any
 
 import cv2
@@ -26,13 +27,13 @@ READ_ONLY = ToolAnnotations(
 MOVEMENT = ToolAnnotations(
     readOnlyHint=False,
     destructiveHint=False,
-    idempotentHint=True,
+    idempotentHint=False,
     openWorldHint=False,
 )
 EXTERNAL = ToolAnnotations(
     readOnlyHint=False,
     destructiveHint=False,
-    idempotentHint=True,
+    idempotentHint=False,
     openWorldHint=True,
 )
 
@@ -62,10 +63,7 @@ SOUNDS = ["wake_up", "go_sleep", "confused1", "impatient1", "dance1", "count"]
 @mcp.resource("reachy://emotions")
 def get_emotions() -> str:
     """Supported emoji-to-emotion mappings for express_emotion tool."""
-    return json.dumps(
-        {emoji: emotion for emoji, emotion in EMOTIONS.items()},
-        ensure_ascii=False,
-    )
+    return json.dumps(EMOTIONS, ensure_ascii=False)
 
 
 @mcp.resource("reachy://sounds")
@@ -115,11 +113,16 @@ def get_capabilities() -> str:
 @mcp.prompt()
 def greet_user(user_name: str = "friend") -> list:
     """Greet a user with Reachy Mini — wake up, look around, and say hello."""
+    safe_name = re.sub(r"[^a-zA-Z0-9 ]", "", user_name)
+    safe_name = " ".join(safe_name.split())[:50]
+    if not safe_name:
+        safe_name = "friend"
+
     return [
-        UserMessage(f"Please greet {user_name} using the robot."),
+        UserMessage(f"Please greet {safe_name} using the robot."),
         AssistantMessage(
             "I'll wake up Reachy, express happiness, and nod to greet "
-            f"{user_name}. Let me use wake_up, then express_emotion with 😊, "
+            f"{safe_name}. Let me use wake_up, then express_emotion with 😊, "
             "and finally nod."
         ),
     ]
