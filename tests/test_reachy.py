@@ -662,9 +662,9 @@ async def test_nod_pitch_values(mock_reachy, mock_create_head_pose):
     await nod(cycles=1)
 
     create_calls = mock_create_head_pose.call_args_list
-    # First call: pitch down (-15), second: pitch up (10), third: return to neutral
-    assert create_calls[0].kwargs["pitch"] == -15
-    assert create_calls[1].kwargs["pitch"] == 10
+    # First call: pitch down (15), second: pitch up (-10), third: return to neutral
+    assert create_calls[0].kwargs["pitch"] == 15
+    assert create_calls[1].kwargs["pitch"] == -10
 
 
 # ---------------------------------------------------------------------------

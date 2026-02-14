@@ -447,11 +447,11 @@ async def nod(cycles: int = 2, speed: float = 0.3) -> str:
     with ReachyMini() as mini:
         for _ in range(cycles):
             mini.goto_target(
-                head=create_head_pose(pitch=-15, mm=True, degrees=True),
+                head=create_head_pose(pitch=15, mm=True, degrees=True),
                 duration=speed,
             )
             mini.goto_target(
-                head=create_head_pose(pitch=10, mm=True, degrees=True),
+                head=create_head_pose(pitch=-10, mm=True, degrees=True),
                 duration=speed,
             )
         # Return to neutral
