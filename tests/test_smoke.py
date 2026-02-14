@@ -16,7 +16,7 @@ async def test_barrel_roll_full_sequence(mock_reachy, mock_create_head_pose):
     """
     result = await do_barrel_roll()
 
-    assert result == "Did the barrel roll2!"
+    assert result == "Did the barrel roll!"
     assert mock_reachy.goto_target.call_count == 4
 
     calls = mock_reachy.goto_target.call_args_list

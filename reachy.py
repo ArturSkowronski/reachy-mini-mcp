@@ -13,7 +13,7 @@ mcp = FastMCP("reachy-mini-mcp")
 
 @mcp.tool()
 async def do_barrel_roll() -> str:
-    """Do the barell roll with Reachy."""
+    """Do the barrel roll with Reachy."""
 
     with ReachyMini() as mini:
         print("Connected to simulation!")
@@ -31,7 +31,7 @@ async def do_barrel_roll() -> str:
 
         # Reset to rest position
         mini.goto_target(head=create_head_pose(), antennas=[0, 0], duration=1.0)
-    return "Did the barrel roll2!"
+    return "Did the barrel roll!"
 
 
 @mcp.tool()
