@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from reachy import (
+    capture_image,
     detect_sound_direction,
     express_emotion,
     go_to_sleep,
@@ -509,6 +510,50 @@ async def test_speak_text_plays_audio_and_cleans_temp_file(mock_reachy, tmp_path
     assert result == "Reachy spoke the provided text via ElevenLabs."
     mock_reachy.media.play_sound.assert_called_once_with(str(temp_wav))
     assert not temp_wav.exists()
+
+
+# ---------------------------------------------------------------------------
+# capture_image
+# ---------------------------------------------------------------------------
+
+
+async def test_capture_image(mock_reachy):
+    """Test capture_image returns an Image with JPEG data."""
+    import numpy as np
+    from mcp.server.fastmcp import Image
+
+    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    mock_reachy.media.get_frame.return_value = fake_frame
+
+    result = await capture_image()
+
+    assert isinstance(result, Image)
+    mock_reachy.media.get_frame.assert_called_once()
+
+
+async def test_capture_image_camera_unavailable(mock_reachy):
+    """Test capture_image raises when camera returns None."""
+    mock_reachy.media.get_frame.return_value = None
+
+    with pytest.raises(RuntimeError, match="Camera not available"):
+        await capture_image()
+
+
+async def test_capture_image_custom_quality(mock_reachy):
+    """Test capture_image clamps quality to valid range."""
+    import numpy as np
+    from unittest.mock import patch
+
+    fake_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    mock_reachy.media.get_frame.return_value = fake_frame
+
+    with patch("reachy.cv2.imencode", wraps=__import__("cv2").imencode) as mock_enc:
+        await capture_image(quality=150)
+        # Quality should be clamped to 100
+        call_args = mock_enc.call_args
+        assert call_args[0][0] == ".jpg"
+        quality_param = call_args[0][2]
+        assert quality_param[1] == 100
 
 
 # ---------------------------------------------------------------------------

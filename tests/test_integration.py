@@ -15,6 +15,7 @@ from reachy import mcp as server
 pytestmark = pytest.mark.integration
 
 EXPECTED_TOOLS = {
+    "capture_image",
     "do_barrel_roll",
     "play_sound",
     "express_emotion",

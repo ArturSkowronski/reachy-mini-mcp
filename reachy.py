@@ -1,7 +1,8 @@
 import os
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+import cv2
+from mcp.server.fastmcp import FastMCP, Image
 from reachy_mini import ReachyMini
 from reachy_mini.utils import create_head_pose
 
@@ -343,6 +344,25 @@ async def move_head(
         mini.goto_target(head=pose, duration=duration)
 
     return f"Moved head to pos({x}, {y}, {z})mm, rot({roll}, {pitch}, {yaw})°"
+
+
+@mcp.tool()
+async def capture_image(quality: int = 90) -> Image:
+    """Capture an image from Reachy Mini's built-in camera.
+
+    Returns the current camera frame as a JPEG image. Use this to see what
+    the robot sees, identify objects, read text, or observe the environment.
+
+    Args:
+        quality: JPEG compression quality 1-100 (default: 90)
+    """
+    quality = max(1, min(100, quality))
+    with ReachyMini() as mini:
+        frame = mini.media.get_frame()
+    if frame is None:
+        raise RuntimeError("Camera not available or failed to capture frame")
+    _, jpeg_bytes = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
+    return Image(data=jpeg_bytes.tobytes(), format="jpeg")
 
 
 def main():
