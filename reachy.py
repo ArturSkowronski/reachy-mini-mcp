@@ -361,7 +361,9 @@ async def capture_image(quality: int = 90) -> Image:
         frame = mini.media.get_frame()
     if frame is None:
         raise RuntimeError("Camera not available or failed to capture frame")
-    _, jpeg_bytes = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
+    success, jpeg_bytes = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
+    if not success:
+        raise RuntimeError("Failed to encode frame to JPEG")
     return Image(data=jpeg_bytes.tobytes(), format="jpeg")
 
 
