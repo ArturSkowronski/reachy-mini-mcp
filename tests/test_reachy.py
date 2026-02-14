@@ -12,9 +12,11 @@ from reachy import (
     look_at_point,
     move_antennas,
     move_head,
+    nod,
     play_sound,
     reset_position,
     scan_surroundings,
+    shake_head,
     speak_text,
     wake_up,
 )
@@ -621,6 +623,90 @@ async def test_scan_surroundings_yaw_positions(
     # First 3 calls are for scan positions, 4th is return-to-center
     yaws = [call.kwargs["yaw"] for call in create_calls[:3]]
     assert yaws == pytest.approx([-30.0, 0.0, 30.0])
+
+
+# ---------------------------------------------------------------------------
+# nod
+# ---------------------------------------------------------------------------
+
+
+async def test_nod_default(mock_reachy, mock_create_head_pose):
+    """Test nod with default parameters (2 cycles)."""
+    result = await nod()
+
+    assert result == "Reachy nodded (2x)"
+    # 2 cycles * 2 moves + 1 return = 5 goto_target calls
+    assert mock_reachy.goto_target.call_count == 5
+
+
+async def test_nod_custom_cycles(mock_reachy, mock_create_head_pose):
+    """Test nod with custom cycle count."""
+    result = await nod(cycles=3, speed=0.5)
+
+    assert result == "Reachy nodded (3x)"
+    # 3 cycles * 2 moves + 1 return = 7 goto_target calls
+    assert mock_reachy.goto_target.call_count == 7
+
+
+async def test_nod_clamps_params(mock_reachy, mock_create_head_pose):
+    """Test that nod clamps cycles and speed to valid bounds."""
+    result = await nod(cycles=99, speed=5.0)
+
+    assert result == "Reachy nodded (5x)"
+    # Clamped to 5 cycles: 5*2 + 1 = 11
+    assert mock_reachy.goto_target.call_count == 11
+
+
+async def test_nod_pitch_values(mock_reachy, mock_create_head_pose):
+    """Test that nod uses correct pitch angles."""
+    await nod(cycles=1)
+
+    create_calls = mock_create_head_pose.call_args_list
+    # First call: pitch down (-15), second: pitch up (10), third: return to neutral
+    assert create_calls[0].kwargs["pitch"] == -15
+    assert create_calls[1].kwargs["pitch"] == 10
+
+
+# ---------------------------------------------------------------------------
+# shake_head
+# ---------------------------------------------------------------------------
+
+
+async def test_shake_head_default(mock_reachy, mock_create_head_pose):
+    """Test shake_head with default parameters (2 cycles)."""
+    result = await shake_head()
+
+    assert result == "Reachy shook head (2x)"
+    # 2 cycles * 2 moves + 1 return = 5 goto_target calls
+    assert mock_reachy.goto_target.call_count == 5
+
+
+async def test_shake_head_custom_cycles(mock_reachy, mock_create_head_pose):
+    """Test shake_head with custom cycle count."""
+    result = await shake_head(cycles=1, speed=0.2)
+
+    assert result == "Reachy shook head (1x)"
+    # 1 cycle * 2 moves + 1 return = 3 goto_target calls
+    assert mock_reachy.goto_target.call_count == 3
+
+
+async def test_shake_head_clamps_params(mock_reachy, mock_create_head_pose):
+    """Test that shake_head clamps cycles and speed to valid bounds."""
+    result = await shake_head(cycles=0, speed=0.01)
+
+    # Clamped to 1 cycle, speed to 0.1
+    assert result == "Reachy shook head (1x)"
+    assert mock_reachy.goto_target.call_count == 3
+
+
+async def test_shake_head_yaw_values(mock_reachy, mock_create_head_pose):
+    """Test that shake_head uses correct yaw angles."""
+    await shake_head(cycles=1)
+
+    create_calls = mock_create_head_pose.call_args_list
+    # First call: yaw left (-20), second: yaw right (20), third: return to neutral
+    assert create_calls[0].kwargs["yaw"] == -20
+    assert create_calls[1].kwargs["yaw"] == 20
 
 
 # ---------------------------------------------------------------------------

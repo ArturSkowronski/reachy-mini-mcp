@@ -430,6 +430,70 @@ async def scan_surroundings(
     return result
 
 
+@mcp.tool()
+async def nod(cycles: int = 2, speed: float = 0.3) -> str:
+    """Nod Reachy Mini's head up and down to indicate "yes" or agreement.
+
+    Use this when the AI wants to physically agree, confirm, or acknowledge
+    something the user said.
+
+    Args:
+        cycles: Number of nod repetitions (default: 2, range: 1-5)
+        speed: Duration of each half-nod in seconds (default: 0.3, range: 0.1-1.0)
+    """
+    cycles = max(1, min(5, cycles))
+    speed = max(0.1, min(1.0, speed))
+
+    with ReachyMini() as mini:
+        for _ in range(cycles):
+            mini.goto_target(
+                head=create_head_pose(pitch=-15, mm=True, degrees=True),
+                duration=speed,
+            )
+            mini.goto_target(
+                head=create_head_pose(pitch=10, mm=True, degrees=True),
+                duration=speed,
+            )
+        # Return to neutral
+        mini.goto_target(
+            head=create_head_pose(mm=True, degrees=True),
+            duration=speed,
+        )
+    return f"Reachy nodded ({cycles}x)"
+
+
+@mcp.tool()
+async def shake_head(cycles: int = 2, speed: float = 0.3) -> str:
+    """Shake Reachy Mini's head left and right to indicate "no" or disagreement.
+
+    Use this when the AI wants to physically disagree, deny, or express
+    disapproval.
+
+    Args:
+        cycles: Number of shake repetitions (default: 2, range: 1-5)
+        speed: Duration of each half-shake in seconds (default: 0.3, range: 0.1-1.0)
+    """
+    cycles = max(1, min(5, cycles))
+    speed = max(0.1, min(1.0, speed))
+
+    with ReachyMini() as mini:
+        for _ in range(cycles):
+            mini.goto_target(
+                head=create_head_pose(yaw=-20, mm=True, degrees=True),
+                duration=speed,
+            )
+            mini.goto_target(
+                head=create_head_pose(yaw=20, mm=True, degrees=True),
+                duration=speed,
+            )
+        # Return to neutral
+        mini.goto_target(
+            head=create_head_pose(mm=True, degrees=True),
+            duration=speed,
+        )
+    return f"Reachy shook head ({cycles}x)"
+
+
 def main():
     mcp.run(transport="stdio")
 
