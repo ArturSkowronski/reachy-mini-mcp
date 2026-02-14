@@ -10,34 +10,28 @@ from reachy_elevenlabs import elevenlabs_tts_to_temp_wav, load_elevenlabs_config
 # Initialize FastMCP server
 mcp = FastMCP("reachy-mini-mcp")
 
+
 @mcp.tool()
 async def do_barrel_roll() -> str:
-    """Do the barell roll with Reachy.
-    """
-
+    """Do the barrel roll with Reachy."""
 
     with ReachyMini() as mini:
         print("Connected to simulation!")
-        
+
         # Look up and tilt head
         print("Moving head...")
         mini.goto_target(
-            head=create_head_pose(z=20, roll=10, mm=True, degrees=True),
-            duration=1.0
+            head=create_head_pose(z=20, roll=10, mm=True, degrees=True), duration=1.0
         )
 
         # Wiggle antennas
         print("Wiggling antennas...")
         mini.goto_target(antennas=[0.6, -0.6], duration=0.3)
         mini.goto_target(antennas=[-0.6, 0.6], duration=0.3)
-        
+
         # Reset to rest position
-        mini.goto_target(
-            head=create_head_pose(),
-            antennas=[0, 0],
-            duration=1.0
-        )
-    return "Did the barrel roll2!"
+        mini.goto_target(head=create_head_pose(), antennas=[0, 0], duration=1.0)
+    return "Did the barrel roll!"
 
 
 @mcp.tool()
@@ -145,7 +139,7 @@ async def express_emotion(emoji: str) -> str:
             mini.goto_target(
                 head=create_head_pose(z=15, roll=5, pitch=-10, mm=True, degrees=True),
                 antennas=[0.8, 0.8],
-                duration=0.8
+                duration=0.8,
             )
             mini.media.play_sound("dance1.wav")
             emotion = "happy"
@@ -154,7 +148,7 @@ async def express_emotion(emoji: str) -> str:
             mini.goto_target(
                 head=create_head_pose(z=10, roll=15, pitch=5, mm=True, degrees=True),
                 antennas=[0.5, -0.3],
-                duration=0.6
+                duration=0.6,
             )
             mini.media.play_sound("confused1.wav")
             emotion = "confused"
@@ -179,7 +173,7 @@ async def express_emotion(emoji: str) -> str:
             mini.goto_target(
                 head=create_head_pose(z=10, roll=-10, pitch=10, mm=True, degrees=True),
                 antennas=[0.6, -0.6],
-                duration=1.0
+                duration=1.0,
             )
             emotion = "thinking"
 
@@ -187,7 +181,7 @@ async def express_emotion(emoji: str) -> str:
             mini.goto_target(
                 head=create_head_pose(z=5, pitch=-15, mm=True, degrees=True),
                 antennas=[1.2, 1.2],
-                duration=0.4
+                duration=0.4,
             )
             emotion = "surprised"
 
@@ -195,7 +189,7 @@ async def express_emotion(emoji: str) -> str:
             mini.goto_target(
                 head=create_head_pose(z=20, pitch=15, mm=True, degrees=True),
                 antennas=[-0.5, -0.5],
-                duration=1.2
+                duration=1.2,
             )
             emotion = "sad"
 
@@ -204,26 +198,24 @@ async def express_emotion(emoji: str) -> str:
             mini.goto_target(
                 head=create_head_pose(z=10, roll=10, mm=True, degrees=True),
                 antennas=[0.8, -0.8],
-                duration=0.3
+                duration=0.3,
             )
             mini.goto_target(
                 head=create_head_pose(z=10, roll=-10, mm=True, degrees=True),
                 antennas=[-0.8, 0.8],
-                duration=0.3
+                duration=0.3,
             )
             mini.media.play_sound("dance1.wav")
             emotion = "celebrate"
 
         elif emoji == "😐":  # Neutral
-            mini.goto_target(
-                head=create_head_pose(),
-                antennas=[0, 0],
-                duration=0.8
-            )
+            mini.goto_target(head=create_head_pose(), antennas=[0, 0], duration=0.8)
             emotion = "neutral"
 
         else:
-            return f"Unsupported emoji: {emoji}. Please use one of the supported emojis."
+            return (
+                f"Unsupported emoji: {emoji}. Please use one of the supported emojis."
+            )
 
     return f"Reachy expressed: {emotion} ({emoji})"
 
@@ -277,11 +269,7 @@ async def reset_position(duration: float = 1.5) -> str:
         duration: Movement duration in seconds (default: 1.5)
     """
     with ReachyMini() as mini:
-        mini.goto_target(
-            head=create_head_pose(),
-            antennas=[0, 0],
-            duration=duration
-        )
+        mini.goto_target(head=create_head_pose(), antennas=[0, 0], duration=duration)
     return "Reachy reset to neutral position"
 
 
@@ -326,9 +314,15 @@ async def detect_sound_direction() -> str:
 
 
 @mcp.tool()
-async def move_head(x: float = 0, y: float = 0, z: float = 0,
-                    roll: float = 0, pitch: float = 0, yaw: float = 0,
-                    duration: float = 1.0) -> str:
+async def move_head(
+    x: float = 0,
+    y: float = 0,
+    z: float = 0,
+    roll: float = 0,
+    pitch: float = 0,
+    yaw: float = 0,
+    duration: float = 1.0,
+) -> str:
     """Move Reachy Mini's head to a specific pose.
 
     Control the head position and orientation with 6 degrees of freedom.
@@ -344,10 +338,7 @@ async def move_head(x: float = 0, y: float = 0, z: float = 0,
     """
     with ReachyMini() as mini:
         pose = create_head_pose(
-            x=x, y=y, z=z,
-            roll=roll, pitch=pitch, yaw=yaw,
-            mm=True,
-            degrees=True
+            x=x, y=y, z=z, roll=roll, pitch=pitch, yaw=yaw, mm=True, degrees=True
         )
         mini.goto_target(head=pose, duration=duration)
 

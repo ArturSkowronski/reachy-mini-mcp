@@ -1,605 +1,546 @@
-"""Tests for reachy.py MCP tools."""
+"""Unit tests for reachy.py MCP tools."""
+
+from unittest.mock import MagicMock
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from reachy import (
     detect_sound_direction,
-    do_barrel_roll,
     express_emotion,
+    go_to_sleep,
+    look_at_point,
     move_antennas,
     move_head,
+    play_sound,
+    reset_position,
     speak_text,
     wake_up,
 )
 
-@pytest.mark.asyncio
-async def test_wake_up():
+
+# ---------------------------------------------------------------------------
+# wake_up
+# ---------------------------------------------------------------------------
+
+
+async def test_wake_up(mock_reachy):
     """Test that wake_up calls the robot's wake_up method."""
-    mock_mini = MagicMock()
-    mock_mini.wake_up = MagicMock()
+    result = await wake_up()
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await wake_up()
-    
     assert result == "Reachy woke up!"
-    mock_mini.wake_up.assert_called_once()
-    mock_mini.__enter__.assert_called_once()
-    mock_mini.__exit__.assert_called_once()
+    mock_reachy.wake_up.assert_called_once()
+    mock_reachy.__enter__.assert_called_once()
+    mock_reachy.__exit__.assert_called_once()
 
 
-@pytest.mark.asyncio
-async def test_detect_sound_direction_with_speech():
+# ---------------------------------------------------------------------------
+# go_to_sleep
+# ---------------------------------------------------------------------------
+
+
+async def test_go_to_sleep(mock_reachy):
+    """Test that go_to_sleep calls goto_sleep."""
+    result = await go_to_sleep()
+
+    assert result == "Reachy went to sleep"
+    mock_reachy.goto_sleep.assert_called_once()
+    mock_reachy.__enter__.assert_called_once()
+    mock_reachy.__exit__.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# play_sound
+# ---------------------------------------------------------------------------
+
+
+async def test_play_sound(mock_reachy):
+    """Test play_sound calls media.play_sound with correct filename."""
+    result = await play_sound("dance1")
+
+    assert result == "Reachy played: dance1"
+    mock_reachy.media.play_sound.assert_called_once_with("dance1.wav")
+
+
+async def test_play_sound_appends_wav(mock_reachy):
+    """Test that .wav extension is appended to the sound name."""
+    await play_sound("confused1")
+
+    mock_reachy.media.play_sound.assert_called_once_with("confused1.wav")
+
+
+# ---------------------------------------------------------------------------
+# look_at_point
+# ---------------------------------------------------------------------------
+
+
+async def test_look_at_point(mock_reachy):
+    """Test look_at_point calls look_at_world with correct args."""
+    result = await look_at_point(x=1.0, y=0.5, z=0.3, duration=2.0)
+
+    assert result == "Reachy looking at point (1.0, 0.5, 0.3)"
+    mock_reachy.look_at_world.assert_called_once_with(1.0, 0.5, 0.3, duration=2.0)
+
+
+async def test_look_at_point_default_duration(mock_reachy):
+    """Test look_at_point uses default duration of 1.0."""
+    await look_at_point(x=0.0, y=0.0, z=1.0)
+
+    mock_reachy.look_at_world.assert_called_once_with(0.0, 0.0, 1.0, duration=1.0)
+
+
+# ---------------------------------------------------------------------------
+# reset_position
+# ---------------------------------------------------------------------------
+
+
+async def test_reset_position(mock_reachy, mock_create_head_pose):
+    """Test reset_position sends default pose and zeroed antennas."""
+    result = await reset_position()
+
+    assert result == "Reachy reset to neutral position"
+    mock_create_head_pose.assert_called_once_with()
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
+        antennas=[0, 0],
+        duration=1.5,
+    )
+
+
+async def test_reset_position_custom_duration(mock_reachy, mock_create_head_pose):
+    """Test reset_position respects custom duration."""
+    await reset_position(duration=3.0)
+
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
+        antennas=[0, 0],
+        duration=3.0,
+    )
+
+
+# ---------------------------------------------------------------------------
+# detect_sound_direction
+# ---------------------------------------------------------------------------
+
+
+async def test_detect_sound_direction_with_speech(mock_reachy):
     """Test detect_sound_direction when speech is detected."""
-    mock_mini = MagicMock()
-    mock_audio = MagicMock()
-    mock_media = MagicMock()
-    mock_media.audio = mock_audio
-    
-    # Mock get_DoA to return angle and speech_detected=True
-    mock_audio.get_DoA = MagicMock(return_value=(1.57, True))  # ~90 degrees, speech detected
-    mock_mini.media = mock_media
+    mock_reachy.media.audio.get_DoA.return_value = (1.57, True)
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await detect_sound_direction()
-    
+    result = await detect_sound_direction()
+
     assert "1.57" in result
     assert "speech detected" in result
-    mock_audio.get_DoA.assert_called_once()
-    mock_mini.__enter__.assert_called_once()
-    mock_mini.__exit__.assert_called_once()
+    mock_reachy.media.audio.get_DoA.assert_called_once()
 
 
-@pytest.mark.asyncio
-async def test_detect_sound_direction_no_speech():
+async def test_detect_sound_direction_no_speech(mock_reachy):
     """Test detect_sound_direction when no speech is detected."""
-    mock_mini = MagicMock()
-    mock_audio = MagicMock()
-    mock_media = MagicMock()
-    mock_media.audio = mock_audio
-    
-    # Mock get_DoA to return angle and speech_detected=False
-    mock_audio.get_DoA = MagicMock(return_value=(0.0, False))  # 0 degrees, no speech
-    mock_mini.media = mock_media
+    mock_reachy.media.audio.get_DoA.return_value = (0.0, False)
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await detect_sound_direction()
-    
+    result = await detect_sound_direction()
+
     assert "0.00" in result
     assert "no speech detected" in result
-    mock_audio.get_DoA.assert_called_once()
-    mock_mini.__enter__.assert_called_once()
-    mock_mini.__exit__.assert_called_once()
 
 
-@pytest.mark.asyncio
-async def test_detect_sound_direction_left_side():
-    """Test detect_sound_direction for sound coming from the left."""
-    mock_mini = MagicMock()
-    mock_audio = MagicMock()
-    mock_media = MagicMock()
-    mock_media.audio = mock_audio
-    
-    # Mock get_DoA to return angle pointing left (0 radians) with speech
-    mock_audio.get_DoA = MagicMock(return_value=(0.0, True))
-    mock_mini.media = mock_media
+async def test_detect_sound_direction_left_side(mock_reachy):
+    """Test detect_sound_direction for sound from the left (0 radians)."""
+    mock_reachy.media.audio.get_DoA.return_value = (0.0, True)
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await detect_sound_direction()
-    
+    result = await detect_sound_direction()
+
     assert "0.00" in result
     assert "speech detected" in result
-    assert "0.0°" in result  # Should convert radians to degrees
-    mock_audio.get_DoA.assert_called_once()
+    assert "0.0°" in result
 
 
-@pytest.mark.asyncio
-async def test_move_antennas_basic():
+# ---------------------------------------------------------------------------
+# move_antennas
+# ---------------------------------------------------------------------------
+
+
+async def test_move_antennas_basic(mock_reachy):
     """Test move_antennas with basic values."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
+    result = await move_antennas(right=1.0, left=-1.0)
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await move_antennas(right=1.0, left=-1.0)
-    
     assert "right=1.00" in result
     assert "left=-1.00" in result
-    mock_mini.goto_target.assert_called_once_with(antennas=[1.0, -1.0], duration=0.5)
-    mock_mini.__enter__.assert_called_once()
-    mock_mini.__exit__.assert_called_once()
+    mock_reachy.goto_target.assert_called_once_with(
+        antennas=[1.0, -1.0],
+        duration=0.5,
+    )
 
 
-@pytest.mark.asyncio
-async def test_move_antennas_with_duration():
+async def test_move_antennas_with_duration(mock_reachy):
     """Test move_antennas with custom duration."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
+    result = await move_antennas(right=0.5, left=0.5, duration=1.0)
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await move_antennas(right=0.5, left=0.5, duration=1.0)
-    
     assert "right=0.50" in result
     assert "left=0.50" in result
-    mock_mini.goto_target.assert_called_once_with(antennas=[0.5, 0.5], duration=1.0)
+    mock_reachy.goto_target.assert_called_once_with(
+        antennas=[0.5, 0.5],
+        duration=1.0,
+    )
 
 
-@pytest.mark.asyncio
-async def test_move_antennas_clamp_upper_bound():
-    """Test that move_antennas clamps values above 3.14."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
+async def test_move_antennas_clamp_upper_bound(mock_reachy):
+    """Test that values above 3.14 are clamped."""
+    result = await move_antennas(right=5.0, left=4.0)
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await move_antennas(right=5.0, left=4.0)
-    
-    # Values should be clamped to 3.14
     assert "right=3.14" in result
     assert "left=3.14" in result
-    mock_mini.goto_target.assert_called_once_with(antennas=[3.14, 3.14], duration=0.5)
+    mock_reachy.goto_target.assert_called_once_with(
+        antennas=[3.14, 3.14],
+        duration=0.5,
+    )
 
 
-@pytest.mark.asyncio
-async def test_move_antennas_clamp_lower_bound():
-    """Test that move_antennas clamps values below -3.14."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
+async def test_move_antennas_clamp_lower_bound(mock_reachy):
+    """Test that values below -3.14 are clamped."""
+    result = await move_antennas(right=-5.0, left=-4.0)
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await move_antennas(right=-5.0, left=-4.0)
-    
-    # Values should be clamped to -3.14
     assert "right=-3.14" in result
     assert "left=-3.14" in result
-    mock_mini.goto_target.assert_called_once_with(antennas=[-3.14, -3.14], duration=0.5)
+    mock_reachy.goto_target.assert_called_once_with(
+        antennas=[-3.14, -3.14],
+        duration=0.5,
+    )
 
 
-@pytest.mark.asyncio
-async def test_move_antennas_zero_position():
+async def test_move_antennas_zero_position(mock_reachy):
     """Test move_antennas with zero positions."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
+    result = await move_antennas(right=0.0, left=0.0)
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await move_antennas(right=0.0, left=0.0)
-    
     assert "right=0.00" in result
     assert "left=0.00" in result
-    mock_mini.goto_target.assert_called_once_with(antennas=[0.0, 0.0], duration=0.5)
+    mock_reachy.goto_target.assert_called_once_with(
+        antennas=[0.0, 0.0],
+        duration=0.5,
+    )
 
 
-@pytest.mark.asyncio
-async def test_move_head_basic():
+async def test_move_antennas_exact_boundary(mock_reachy):
+    """Test that exact boundary values +-3.14 are not clamped."""
+    result = await move_antennas(right=3.14, left=-3.14)
+
+    assert "right=3.14" in result
+    assert "left=-3.14" in result
+    mock_reachy.goto_target.assert_called_once_with(
+        antennas=[3.14, -3.14],
+        duration=0.5,
+    )
+
+
+# ---------------------------------------------------------------------------
+# move_head
+# ---------------------------------------------------------------------------
+
+
+async def test_move_head_basic(mock_reachy, mock_create_head_pose):
     """Test move_head with all parameters."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
-    mock_pose = MagicMock()
+    result = await move_head(
+        x=10,
+        y=5,
+        z=15,
+        roll=10,
+        pitch=-5,
+        yaw=20,
+        duration=1.5,
+    )
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose) as mock_create_pose:
-        result = await move_head(x=10, y=5, z=15, roll=10, pitch=-5, yaw=20, duration=1.5)
-    
     assert "pos(10, 5, 15)mm" in result
     assert "rot(10, -5, 20)°" in result
-    mock_create_pose.assert_called_once_with(
-        x=10, y=5, z=15,
-        roll=10, pitch=-5, yaw=20,
+    mock_create_head_pose.assert_called_once_with(
+        x=10,
+        y=5,
+        z=15,
+        roll=10,
+        pitch=-5,
+        yaw=20,
         mm=True,
-        degrees=True
+        degrees=True,
     )
-    mock_mini.goto_target.assert_called_once_with(head=mock_pose, duration=1.5)
-    mock_mini.__enter__.assert_called_once()
-    mock_mini.__exit__.assert_called_once()
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
+        duration=1.5,
+    )
 
 
-@pytest.mark.asyncio
-async def test_move_head_defaults():
+async def test_move_head_defaults(mock_reachy, mock_create_head_pose):
     """Test move_head with default values."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
-    mock_pose = MagicMock()
+    result = await move_head()
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose) as mock_create_pose:
-        result = await move_head()
-    
     assert "pos(0, 0, 0)mm" in result
     assert "rot(0, 0, 0)°" in result
-    mock_create_pose.assert_called_once_with(
-        x=0, y=0, z=0,
-        roll=0, pitch=0, yaw=0,
+    mock_create_head_pose.assert_called_once_with(
+        x=0,
+        y=0,
+        z=0,
+        roll=0,
+        pitch=0,
+        yaw=0,
         mm=True,
-        degrees=True
+        degrees=True,
     )
-    mock_mini.goto_target.assert_called_once_with(head=mock_pose, duration=1.0)
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
+        duration=1.0,
+    )
 
 
-@pytest.mark.asyncio
-async def test_move_head_position_only():
+async def test_move_head_position_only(mock_reachy, mock_create_head_pose):
     """Test move_head with only position parameters."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
-    mock_pose = MagicMock()
+    result = await move_head(x=20, y=10, z=30)
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose) as mock_create_pose:
-        result = await move_head(x=20, y=10, z=30)
-    
     assert "pos(20, 10, 30)mm" in result
     assert "rot(0, 0, 0)°" in result
-    mock_create_pose.assert_called_once_with(
-        x=20, y=10, z=30,
-        roll=0, pitch=0, yaw=0,
+    mock_create_head_pose.assert_called_once_with(
+        x=20,
+        y=10,
+        z=30,
+        roll=0,
+        pitch=0,
+        yaw=0,
         mm=True,
-        degrees=True
+        degrees=True,
     )
-    mock_mini.goto_target.assert_called_once_with(head=mock_pose, duration=1.0)
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
+        duration=1.0,
+    )
 
 
-@pytest.mark.asyncio
-async def test_move_head_rotation_only():
+async def test_move_head_rotation_only(mock_reachy, mock_create_head_pose):
     """Test move_head with only rotation parameters."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
-    mock_pose = MagicMock()
+    result = await move_head(roll=15, pitch=-10, yaw=30, duration=0.8)
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose) as mock_create_pose:
-        result = await move_head(roll=15, pitch=-10, yaw=30, duration=0.8)
-    
     assert "pos(0, 0, 0)mm" in result
     assert "rot(15, -10, 30)°" in result
-    mock_create_pose.assert_called_once_with(
-        x=0, y=0, z=0,
-        roll=15, pitch=-10, yaw=30,
+    mock_create_head_pose.assert_called_once_with(
+        x=0,
+        y=0,
+        z=0,
+        roll=15,
+        pitch=-10,
+        yaw=30,
         mm=True,
-        degrees=True
+        degrees=True,
     )
-    mock_mini.goto_target.assert_called_once_with(head=mock_pose, duration=0.8)
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
+        duration=0.8,
+    )
 
 
-@pytest.mark.asyncio
-async def test_express_emotion_happy():
-    """Test express_emotion with happy emoji 😊."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
-    mock_media = MagicMock()
-    mock_media.play_sound = MagicMock()
-    mock_mini.media = mock_media
-    mock_pose = MagicMock()
+async def test_move_head_negative_values(mock_reachy, mock_create_head_pose):
+    """Test move_head with negative position and rotation values."""
+    result = await move_head(x=-10, y=-5, z=-15, roll=-10, pitch=-20, yaw=-30)
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose):
-        result = await express_emotion("😊")
-    
+    assert "pos(-10, -5, -15)mm" in result
+    assert "rot(-10, -20, -30)°" in result
+    mock_create_head_pose.assert_called_once_with(
+        x=-10,
+        y=-5,
+        z=-15,
+        roll=-10,
+        pitch=-20,
+        yaw=-30,
+        mm=True,
+        degrees=True,
+    )
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
+        duration=1.0,
+    )
+
+
+# ---------------------------------------------------------------------------
+# express_emotion
+# ---------------------------------------------------------------------------
+
+
+async def test_express_emotion_happy(mock_reachy, mock_create_head_pose):
+    """Test express_emotion with happy emoji."""
+    result = await express_emotion("😊")
+
     assert result == "Reachy expressed: happy (😊)"
-    mock_mini.goto_target.assert_called_once_with(
-        head=mock_pose,
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
         antennas=[0.8, 0.8],
-        duration=0.8
+        duration=0.8,
     )
-    mock_media.play_sound.assert_called_once_with("dance1.wav")
+    mock_reachy.media.play_sound.assert_called_once_with("dance1.wav")
 
 
-@pytest.mark.asyncio
-async def test_express_emotion_confused():
-    """Test express_emotion with confused emoji 😕."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
-    mock_media = MagicMock()
-    mock_media.play_sound = MagicMock()
-    mock_mini.media = mock_media
-    mock_pose = MagicMock()
+async def test_express_emotion_confused(mock_reachy, mock_create_head_pose):
+    """Test express_emotion with confused emoji."""
+    result = await express_emotion("😕")
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose):
-        result = await express_emotion("😕")
-    
     assert result == "Reachy expressed: confused (😕)"
-    mock_mini.goto_target.assert_called_once_with(
-        head=mock_pose,
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
         antennas=[0.5, -0.3],
-        duration=0.6
+        duration=0.6,
     )
-    mock_media.play_sound.assert_called_once_with("confused1.wav")
+    mock_reachy.media.play_sound.assert_called_once_with("confused1.wav")
 
 
-@pytest.mark.asyncio
-async def test_express_emotion_impatient():
-    """Test express_emotion with impatient emoji 😤."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
-    mock_media = MagicMock()
-    mock_media.play_sound = MagicMock()
-    mock_mini.media = mock_media
+async def test_express_emotion_impatient(mock_reachy):
+    """Test express_emotion with impatient emoji — 3 rapid antenna moves."""
+    result = await express_emotion("😤")
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await express_emotion("😤")
-    
     assert result == "Reachy expressed: impatient (😤)"
-    # Should be called 3 times for rapid antenna movements
-    assert mock_mini.goto_target.call_count == 3
-    mock_mini.goto_target.assert_any_call(antennas=[0.7, -0.7], duration=0.2)
-    mock_mini.goto_target.assert_any_call(antennas=[-0.7, 0.7], duration=0.2)
-    mock_media.play_sound.assert_called_once_with("impatient1.wav")
+    assert mock_reachy.goto_target.call_count == 3
+    mock_reachy.goto_target.assert_any_call(antennas=[0.7, -0.7], duration=0.2)
+    mock_reachy.goto_target.assert_any_call(antennas=[-0.7, 0.7], duration=0.2)
+    mock_reachy.media.play_sound.assert_called_once_with("impatient1.wav")
 
 
-@pytest.mark.asyncio
-async def test_express_emotion_sleepy():
-    """Test express_emotion with sleepy emoji 😴."""
-    mock_mini = MagicMock()
-    mock_mini.goto_sleep = MagicMock()
+async def test_express_emotion_sleepy(mock_reachy):
+    """Test express_emotion with sleepy emoji calls goto_sleep."""
+    result = await express_emotion("😴")
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await express_emotion("😴")
-    
     assert result == "Reachy expressed: sleepy (😴)"
-    mock_mini.goto_sleep.assert_called_once()
+    mock_reachy.goto_sleep.assert_called_once()
 
 
-@pytest.mark.asyncio
-async def test_express_emotion_wave():
-    """Test express_emotion with wave/greeting emoji 👋."""
-    mock_mini = MagicMock()
-    mock_mini.wake_up = MagicMock()
+async def test_express_emotion_wave(mock_reachy):
+    """Test express_emotion with wave emoji calls wake_up."""
+    result = await express_emotion("👋")
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await express_emotion("👋")
-    
     assert result == "Reachy expressed: greeting (👋)"
-    mock_mini.wake_up.assert_called_once()
+    mock_reachy.wake_up.assert_called_once()
 
 
-@pytest.mark.asyncio
-async def test_express_emotion_thinking():
-    """Test express_emotion with thinking emoji 🤔."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
-    mock_pose = MagicMock()
+async def test_express_emotion_thinking(mock_reachy, mock_create_head_pose):
+    """Test express_emotion with thinking emoji."""
+    result = await express_emotion("🤔")
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose):
-        result = await express_emotion("🤔")
-    
     assert result == "Reachy expressed: thinking (🤔)"
-    mock_mini.goto_target.assert_called_once_with(
-        head=mock_pose,
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
         antennas=[0.6, -0.6],
-        duration=1.0
+        duration=1.0,
     )
 
 
-@pytest.mark.asyncio
-async def test_express_emotion_surprised():
-    """Test express_emotion with surprised emoji 😮."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
-    mock_pose = MagicMock()
+async def test_express_emotion_surprised(mock_reachy, mock_create_head_pose):
+    """Test express_emotion with surprised emoji."""
+    result = await express_emotion("😮")
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose):
-        result = await express_emotion("😮")
-    
     assert result == "Reachy expressed: surprised (😮)"
-    mock_mini.goto_target.assert_called_once_with(
-        head=mock_pose,
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
         antennas=[1.2, 1.2],
-        duration=0.4
+        duration=0.4,
     )
 
 
-@pytest.mark.asyncio
-async def test_express_emotion_sad():
-    """Test express_emotion with sad emoji 😢."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
-    mock_pose = MagicMock()
+async def test_express_emotion_sad(mock_reachy, mock_create_head_pose):
+    """Test express_emotion with sad emoji."""
+    result = await express_emotion("😢")
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose):
-        result = await express_emotion("😢")
-    
     assert result == "Reachy expressed: sad (😢)"
-    mock_mini.goto_target.assert_called_once_with(
-        head=mock_pose,
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
         antennas=[-0.5, -0.5],
-        duration=1.2
+        duration=1.2,
     )
 
 
-@pytest.mark.asyncio
-async def test_express_emotion_celebrate():
-    """Test express_emotion with celebrate emoji 🎉."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
-    mock_media = MagicMock()
-    mock_media.play_sound = MagicMock()
-    mock_mini.media = mock_media
-    mock_pose = MagicMock()
+async def test_express_emotion_celebrate(mock_reachy, mock_create_head_pose):
+    """Test express_emotion with celebrate emoji — wiggle + sound."""
+    result = await express_emotion("🎉")
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose):
-        result = await express_emotion("🎉")
-    
     assert result == "Reachy expressed: celebrate (🎉)"
-    # Should be called twice for wiggle celebration
-    assert mock_mini.goto_target.call_count == 2
-    mock_media.play_sound.assert_called_once_with("dance1.wav")
+    assert mock_reachy.goto_target.call_count == 2
+    mock_reachy.media.play_sound.assert_called_once_with("dance1.wav")
 
 
-@pytest.mark.asyncio
-async def test_express_emotion_neutral():
-    """Test express_emotion with neutral emoji 😐."""
-    mock_mini = MagicMock()
-    mock_mini.goto_target = MagicMock()
-    mock_pose = MagicMock()
+async def test_express_emotion_neutral(mock_reachy, mock_create_head_pose):
+    """Test express_emotion with neutral emoji resets to rest."""
+    result = await express_emotion("😐")
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose):
-        result = await express_emotion("😐")
-    
     assert result == "Reachy expressed: neutral (😐)"
-    mock_mini.goto_target.assert_called_once_with(
-        head=mock_pose,
+    mock_reachy.goto_target.assert_called_once_with(
+        head=mock_create_head_pose.return_value,
         antennas=[0, 0],
-        duration=0.8
+        duration=0.8,
     )
 
 
-@pytest.mark.asyncio
-async def test_express_emotion_unsupported():
+async def test_express_emotion_unsupported(mock_reachy):
     """Test express_emotion with unsupported emoji."""
-    mock_mini = MagicMock()
+    result = await express_emotion("🔥")
 
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-    
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-    
-    with patch("reachy.ReachyMini", mock_reachy_class):
-        result = await express_emotion("🔥")
-    
     assert "Unsupported emoji: 🔥" in result
     assert "Please use one of the supported emojis" in result
 
 
-@pytest.mark.asyncio
-async def test_speak_text_plays_audio_and_cleans_temp_file(tmp_path):
+@pytest.mark.parametrize("emoji", ["💀", "🤖", "🦄"])
+async def test_express_emotion_multiple_unsupported(mock_reachy, emoji):
+    """Test that various unsupported emojis all return the error message."""
+    result = await express_emotion(emoji)
+
+    assert f"Unsupported emoji: {emoji}" in result
+
+
+# ---------------------------------------------------------------------------
+# speak_text
+# ---------------------------------------------------------------------------
+
+
+async def test_speak_text_plays_audio_and_cleans_temp_file(mock_reachy, tmp_path):
     """Test speak_text generates audio and plays it via Reachy media."""
+    from unittest.mock import AsyncMock, patch
+
     temp_wav = tmp_path / "out.wav"
     temp_wav.write_bytes(b"not-a-real-wav")
 
-    mock_mini = MagicMock()
-    mock_media = MagicMock()
-    mock_media.play_sound = MagicMock()
-    mock_mini.media = mock_media
-
-    mock_mini.__enter__ = MagicMock(return_value=mock_mini)
-    mock_mini.__exit__ = MagicMock(return_value=False)
-
-    mock_reachy_class = MagicMock(return_value=mock_mini)
-
-    with patch("reachy.ReachyMini", mock_reachy_class), patch(
-        "reachy.load_elevenlabs_config", return_value=MagicMock()
-    ), patch(
-        "reachy.elevenlabs_tts_to_temp_wav", new=AsyncMock(return_value=str(temp_wav))
+    with (
+        patch("reachy.load_elevenlabs_config", return_value=MagicMock()),
+        patch(
+            "reachy.elevenlabs_tts_to_temp_wav",
+            new=AsyncMock(return_value=str(temp_wav)),
+        ),
     ):
         result = await speak_text("Hello!")
 
     assert result == "Reachy spoke the provided text via ElevenLabs."
-    mock_media.play_sound.assert_called_once_with(str(temp_wav))
+    mock_reachy.media.play_sound.assert_called_once_with(str(temp_wav))
     assert not temp_wav.exists()
+
+
+# ---------------------------------------------------------------------------
+# Connection error tests
+# ---------------------------------------------------------------------------
+
+
+async def test_wake_up_connection_error():
+    """Test that connection errors propagate from wake_up."""
+    from unittest.mock import MagicMock, patch
+
+    mock_class = MagicMock(side_effect=ConnectionError("Robot not found"))
+    with patch("reachy.ReachyMini", mock_class):
+        with pytest.raises(ConnectionError, match="Robot not found"):
+            await wake_up()
+
+
+async def test_move_head_connection_error():
+    """Test that connection errors propagate from move_head."""
+    from unittest.mock import MagicMock, patch
+
+    mock_class = MagicMock(side_effect=ConnectionError("Timeout"))
+    with patch("reachy.ReachyMini", mock_class):
+        with pytest.raises(ConnectionError, match="Timeout"):
+            await move_head()
+
+
+async def test_detect_sound_connection_error():
+    """Test that connection errors propagate from detect_sound_direction."""
+    from unittest.mock import MagicMock, patch
+
+    mock_class = MagicMock(side_effect=OSError("Network unreachable"))
+    with patch("reachy.ReachyMini", mock_class):
+        with pytest.raises(OSError, match="Network unreachable"):
+            await detect_sound_direction()

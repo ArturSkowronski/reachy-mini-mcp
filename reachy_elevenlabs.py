@@ -37,7 +37,9 @@ def load_elevenlabs_config(
     return ElevenLabsConfig(
         api_key=resolved_api_key,
         voice_id=resolved_voice_id,
-        model_id=model_id or os.getenv("ELEVENLABS_MODEL_ID") or "eleven_multilingual_v2",
+        model_id=model_id
+        or os.getenv("ELEVENLABS_MODEL_ID")
+        or "eleven_multilingual_v2",
         output_format=output_format
         or os.getenv("ELEVENLABS_OUTPUT_FORMAT")
         or "wav_44100",
@@ -67,7 +69,12 @@ async def elevenlabs_tts_bytes(
     }
 
     async with httpx.AsyncClient(timeout=timeout_s) as client:
-        resp = await client.post(url, params={"output_format": config.output_format}, headers=headers, json=payload)
+        resp = await client.post(
+            url,
+            params={"output_format": config.output_format},
+            headers=headers,
+            json=payload,
+        )
         resp.raise_for_status()
         return resp.content
 
@@ -86,11 +93,12 @@ async def elevenlabs_tts_to_temp_wav(
         timeout_s=timeout_s,
     )
 
-    tmp = tempfile.NamedTemporaryFile(prefix="reachy_elevenlabs_", suffix=".wav", delete=False)
+    tmp = tempfile.NamedTemporaryFile(
+        prefix="reachy_elevenlabs_", suffix=".wav", delete=False
+    )
     try:
         tmp.write(audio_bytes)
         tmp.flush()
         return tmp.name
     finally:
         tmp.close()
-
