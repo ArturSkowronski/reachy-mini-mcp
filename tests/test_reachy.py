@@ -19,6 +19,7 @@ from reachy import (
 # wake_up
 # ---------------------------------------------------------------------------
 
+
 async def test_wake_up(mock_reachy):
     """Test that wake_up calls the robot's wake_up method."""
     result = await wake_up()
@@ -33,6 +34,7 @@ async def test_wake_up(mock_reachy):
 # go_to_sleep
 # ---------------------------------------------------------------------------
 
+
 async def test_go_to_sleep(mock_reachy):
     """Test that go_to_sleep calls goto_sleep."""
     result = await go_to_sleep()
@@ -46,6 +48,7 @@ async def test_go_to_sleep(mock_reachy):
 # ---------------------------------------------------------------------------
 # play_sound
 # ---------------------------------------------------------------------------
+
 
 async def test_play_sound(mock_reachy):
     """Test play_sound calls media.play_sound with correct filename."""
@@ -66,6 +69,7 @@ async def test_play_sound_appends_wav(mock_reachy):
 # look_at_point
 # ---------------------------------------------------------------------------
 
+
 async def test_look_at_point(mock_reachy):
     """Test look_at_point calls look_at_world with correct args."""
     result = await look_at_point(x=1.0, y=0.5, z=0.3, duration=2.0)
@@ -84,6 +88,7 @@ async def test_look_at_point_default_duration(mock_reachy):
 # ---------------------------------------------------------------------------
 # reset_position
 # ---------------------------------------------------------------------------
+
 
 async def test_reset_position(mock_reachy, mock_create_head_pose):
     """Test reset_position sends default pose and zeroed antennas."""
@@ -112,6 +117,7 @@ async def test_reset_position_custom_duration(mock_reachy, mock_create_head_pose
 # ---------------------------------------------------------------------------
 # detect_sound_direction
 # ---------------------------------------------------------------------------
+
 
 async def test_detect_sound_direction_with_speech(mock_reachy):
     """Test detect_sound_direction when speech is detected."""
@@ -149,6 +155,7 @@ async def test_detect_sound_direction_left_side(mock_reachy):
 # move_antennas
 # ---------------------------------------------------------------------------
 
+
 async def test_move_antennas_basic(mock_reachy):
     """Test move_antennas with basic values."""
     result = await move_antennas(right=1.0, left=-1.0)
@@ -156,7 +163,8 @@ async def test_move_antennas_basic(mock_reachy):
     assert "right=1.00" in result
     assert "left=-1.00" in result
     mock_reachy.goto_target.assert_called_once_with(
-        antennas=[1.0, -1.0], duration=0.5,
+        antennas=[1.0, -1.0],
+        duration=0.5,
     )
 
 
@@ -167,7 +175,8 @@ async def test_move_antennas_with_duration(mock_reachy):
     assert "right=0.50" in result
     assert "left=0.50" in result
     mock_reachy.goto_target.assert_called_once_with(
-        antennas=[0.5, 0.5], duration=1.0,
+        antennas=[0.5, 0.5],
+        duration=1.0,
     )
 
 
@@ -178,7 +187,8 @@ async def test_move_antennas_clamp_upper_bound(mock_reachy):
     assert "right=3.14" in result
     assert "left=3.14" in result
     mock_reachy.goto_target.assert_called_once_with(
-        antennas=[3.14, 3.14], duration=0.5,
+        antennas=[3.14, 3.14],
+        duration=0.5,
     )
 
 
@@ -189,7 +199,8 @@ async def test_move_antennas_clamp_lower_bound(mock_reachy):
     assert "right=-3.14" in result
     assert "left=-3.14" in result
     mock_reachy.goto_target.assert_called_once_with(
-        antennas=[-3.14, -3.14], duration=0.5,
+        antennas=[-3.14, -3.14],
+        duration=0.5,
     )
 
 
@@ -200,7 +211,8 @@ async def test_move_antennas_zero_position(mock_reachy):
     assert "right=0.00" in result
     assert "left=0.00" in result
     mock_reachy.goto_target.assert_called_once_with(
-        antennas=[0.0, 0.0], duration=0.5,
+        antennas=[0.0, 0.0],
+        duration=0.5,
     )
 
 
@@ -211,7 +223,8 @@ async def test_move_antennas_exact_boundary(mock_reachy):
     assert "right=3.14" in result
     assert "left=-3.14" in result
     mock_reachy.goto_target.assert_called_once_with(
-        antennas=[3.14, -3.14], duration=0.5,
+        antennas=[3.14, -3.14],
+        duration=0.5,
     )
 
 
@@ -219,21 +232,34 @@ async def test_move_antennas_exact_boundary(mock_reachy):
 # move_head
 # ---------------------------------------------------------------------------
 
+
 async def test_move_head_basic(mock_reachy, mock_create_head_pose):
     """Test move_head with all parameters."""
     result = await move_head(
-        x=10, y=5, z=15, roll=10, pitch=-5, yaw=20, duration=1.5,
+        x=10,
+        y=5,
+        z=15,
+        roll=10,
+        pitch=-5,
+        yaw=20,
+        duration=1.5,
     )
 
     assert "pos(10, 5, 15)mm" in result
     assert "rot(10, -5, 20)°" in result
     mock_create_head_pose.assert_called_once_with(
-        x=10, y=5, z=15,
-        roll=10, pitch=-5, yaw=20,
-        mm=True, degrees=True,
+        x=10,
+        y=5,
+        z=15,
+        roll=10,
+        pitch=-5,
+        yaw=20,
+        mm=True,
+        degrees=True,
     )
     mock_reachy.goto_target.assert_called_once_with(
-        head=mock_create_head_pose.return_value, duration=1.5,
+        head=mock_create_head_pose.return_value,
+        duration=1.5,
     )
 
 
@@ -244,12 +270,18 @@ async def test_move_head_defaults(mock_reachy, mock_create_head_pose):
     assert "pos(0, 0, 0)mm" in result
     assert "rot(0, 0, 0)°" in result
     mock_create_head_pose.assert_called_once_with(
-        x=0, y=0, z=0,
-        roll=0, pitch=0, yaw=0,
-        mm=True, degrees=True,
+        x=0,
+        y=0,
+        z=0,
+        roll=0,
+        pitch=0,
+        yaw=0,
+        mm=True,
+        degrees=True,
     )
     mock_reachy.goto_target.assert_called_once_with(
-        head=mock_create_head_pose.return_value, duration=1.0,
+        head=mock_create_head_pose.return_value,
+        duration=1.0,
     )
 
 
@@ -260,12 +292,18 @@ async def test_move_head_position_only(mock_reachy, mock_create_head_pose):
     assert "pos(20, 10, 30)mm" in result
     assert "rot(0, 0, 0)°" in result
     mock_create_head_pose.assert_called_once_with(
-        x=20, y=10, z=30,
-        roll=0, pitch=0, yaw=0,
-        mm=True, degrees=True,
+        x=20,
+        y=10,
+        z=30,
+        roll=0,
+        pitch=0,
+        yaw=0,
+        mm=True,
+        degrees=True,
     )
     mock_reachy.goto_target.assert_called_once_with(
-        head=mock_create_head_pose.return_value, duration=1.0,
+        head=mock_create_head_pose.return_value,
+        duration=1.0,
     )
 
 
@@ -276,12 +314,18 @@ async def test_move_head_rotation_only(mock_reachy, mock_create_head_pose):
     assert "pos(0, 0, 0)mm" in result
     assert "rot(15, -10, 30)°" in result
     mock_create_head_pose.assert_called_once_with(
-        x=0, y=0, z=0,
-        roll=15, pitch=-10, yaw=30,
-        mm=True, degrees=True,
+        x=0,
+        y=0,
+        z=0,
+        roll=15,
+        pitch=-10,
+        yaw=30,
+        mm=True,
+        degrees=True,
     )
     mock_reachy.goto_target.assert_called_once_with(
-        head=mock_create_head_pose.return_value, duration=0.8,
+        head=mock_create_head_pose.return_value,
+        duration=0.8,
     )
 
 
@@ -292,15 +336,21 @@ async def test_move_head_negative_values(mock_reachy, mock_create_head_pose):
     assert "pos(-10, -5, -15)mm" in result
     assert "rot(-10, -20, -30)°" in result
     mock_create_head_pose.assert_called_once_with(
-        x=-10, y=-5, z=-15,
-        roll=-10, pitch=-20, yaw=-30,
-        mm=True, degrees=True,
+        x=-10,
+        y=-5,
+        z=-15,
+        roll=-10,
+        pitch=-20,
+        yaw=-30,
+        mm=True,
+        degrees=True,
     )
 
 
 # ---------------------------------------------------------------------------
 # express_emotion
 # ---------------------------------------------------------------------------
+
 
 async def test_express_emotion_happy(mock_reachy, mock_create_head_pose):
     """Test express_emotion with happy emoji."""
@@ -431,6 +481,7 @@ async def test_express_emotion_multiple_unsupported(mock_reachy, emoji):
 # ---------------------------------------------------------------------------
 # Connection error tests
 # ---------------------------------------------------------------------------
+
 
 async def test_wake_up_connection_error():
     """Test that connection errors propagate from wake_up."""

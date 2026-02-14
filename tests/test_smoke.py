@@ -23,7 +23,8 @@ async def test_barrel_roll_full_sequence(mock_reachy, mock_create_head_pose):
 
     # Call 1: head tilt (head pose with z=20, roll=10)
     assert calls[0] == call(
-        head=mock_create_head_pose.return_value, duration=1.0,
+        head=mock_create_head_pose.return_value,
+        duration=1.0,
     )
 
     # Call 2: antenna wiggle right

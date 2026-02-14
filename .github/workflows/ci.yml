@@ -7,27 +7,91 @@ on:
     branches: [ main, master, develop ]
 
 jobs:
-  test:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Ruff check
+      run: ruff check .
+
+    - name: Ruff format check
+      run: ruff format --check .
+
+  unit-tests:
+    name: Unit Tests
+    needs: lint
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.13"]
-    
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -e ".[dev]"
-    
-    - name: Run tests
-      run: |
-        pytest -v
 
+    - name: Run unit tests
+      run: pytest -v -m "not integration" tests/test_reachy.py
+
+  smoke-tests:
+    name: Smoke Tests
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Run smoke tests
+      run: pytest -v tests/test_smoke.py
+
+  integration-tests:
+    name: Integration Tests
+    needs: [unit-tests, smoke-tests]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Run integration tests
+      run: pytest -v -m integration

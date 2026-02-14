@@ -40,6 +40,7 @@ def _make_mock_mini():
 # Tool registration
 # ---------------------------------------------------------------------------
 
+
 async def test_all_tools_registered():
     """All 10 tools should be discoverable via list_tools."""
     async with create_connected_server_and_client_session(server) as session:
@@ -52,6 +53,7 @@ async def test_all_tools_registered():
 # ---------------------------------------------------------------------------
 # Tool schemas
 # ---------------------------------------------------------------------------
+
 
 async def test_move_head_schema():
     """move_head should expose x, y, z, roll, pitch, yaw, duration params."""
@@ -87,6 +89,7 @@ async def test_express_emotion_schema():
 # Tool calls through MCP
 # ---------------------------------------------------------------------------
 
+
 async def test_call_wake_up_via_mcp():
     """Call wake_up through the MCP protocol and verify the result text."""
     mock_mini = _make_mock_mini()
@@ -106,20 +109,35 @@ async def test_call_move_head_via_mcp():
     mock_class = MagicMock(return_value=mock_mini)
     mock_pose = MagicMock()
 
-    with patch("reachy.ReachyMini", mock_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose) as mock_create:
+    with (
+        patch("reachy.ReachyMini", mock_class),
+        patch("reachy.create_head_pose", return_value=mock_pose) as mock_create,
+    ):
         async with create_connected_server_and_client_session(server) as session:
             result = await session.call_tool(
                 "move_head",
-                {"x": 10, "y": 5, "z": 15, "roll": 10, "pitch": -5, "yaw": 20, "duration": 1.5},
+                {
+                    "x": 10,
+                    "y": 5,
+                    "z": 15,
+                    "roll": 10,
+                    "pitch": -5,
+                    "yaw": 20,
+                    "duration": 1.5,
+                },
             )
 
     # MCP JSON-RPC deserializes integers as floats
     assert "pos(10.0, 5.0, 15.0)mm" in result.content[0].text
     mock_create.assert_called_once_with(
-        x=10.0, y=5.0, z=15.0,
-        roll=10.0, pitch=-5.0, yaw=20.0,
-        mm=True, degrees=True,
+        x=10.0,
+        y=5.0,
+        z=15.0,
+        roll=10.0,
+        pitch=-5.0,
+        yaw=20.0,
+        mm=True,
+        degrees=True,
     )
     mock_mini.goto_target.assert_called_once_with(head=mock_pose, duration=1.5)
 
@@ -130,8 +148,10 @@ async def test_call_express_emotion_via_mcp():
     mock_class = MagicMock(return_value=mock_mini)
     mock_pose = MagicMock()
 
-    with patch("reachy.ReachyMini", mock_class), \
-         patch("reachy.create_head_pose", return_value=mock_pose):
+    with (
+        patch("reachy.ReachyMini", mock_class),
+        patch("reachy.create_head_pose", return_value=mock_pose),
+    ):
         async with create_connected_server_and_client_session(server) as session:
             result = await session.call_tool("express_emotion", {"emoji": "😊"})
 
