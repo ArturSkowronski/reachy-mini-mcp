@@ -369,6 +369,67 @@ async def capture_image(quality: int = 90) -> Image:
     return Image(data=jpeg_bytes.tobytes(), format="jpeg")
 
 
+@mcp.tool()
+async def scan_surroundings(
+    steps: int = 5,
+    yaw_range: float = 120.0,
+    quality: int = 80,
+) -> list:
+    """Scan the robot's surroundings by panning the camera across multiple angles.
+
+    Captures images at evenly spaced yaw positions across the specified range,
+    then returns to center. The AI receives all frames in a single response
+    for a panoramic understanding of the environment.
+
+    Args:
+        steps: Number of positions to capture (default: 5, range: 2-9)
+        yaw_range: Total horizontal sweep in degrees (default: 120, range: 30-180)
+        quality: JPEG compression quality 1-100 (default: 80)
+    """
+    steps = max(2, min(9, steps))
+    yaw_range = max(30.0, min(180.0, yaw_range))
+    quality = max(1, min(100, quality))
+
+    half = yaw_range / 2
+    yaw_positions = [-half + i * yaw_range / (steps - 1) for i in range(steps)]
+
+    result: list = []
+    with ReachyMini() as mini:
+        for i, yaw in enumerate(yaw_positions, 1):
+            mini.goto_target(
+                head=create_head_pose(yaw=yaw, mm=True, degrees=True),
+                duration=0.6,
+            )
+            frame = mini.media.get_frame()
+            if frame is None:
+                result.append(
+                    f"Position {i}/{steps} (yaw {yaw:+.0f}°): frame capture failed"
+                )
+                continue
+            success, jpeg_bytes = cv2.imencode(
+                ".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, quality]
+            )
+            if not success:
+                result.append(
+                    f"Position {i}/{steps} (yaw {yaw:+.0f}°): JPEG encoding failed"
+                )
+                continue
+            result.append(f"Position {i}/{steps} (yaw {yaw:+.0f}°):")
+            result.append(Image(data=jpeg_bytes.tobytes(), format="jpeg"))
+
+        # Return to center
+        mini.goto_target(
+            head=create_head_pose(mm=True, degrees=True),
+            duration=0.6,
+        )
+
+    result.append(
+        f"Scan complete: {steps} positions across {yaw_range:.0f}° "
+        f"(from {yaw_positions[0]:+.0f}° to {yaw_positions[-1]:+.0f}°)"
+    )
+    return result
+
+
 def main():
     mcp.run(transport="stdio")
 
