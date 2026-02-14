@@ -18,6 +18,7 @@ from reachy import (
     scan_surroundings,
     shake_head,
     speak_text,
+    track_face,
     wake_up,
 )
 
@@ -704,9 +705,106 @@ async def test_shake_head_yaw_values(mock_reachy, mock_create_head_pose):
     await shake_head(cycles=1)
 
     create_calls = mock_create_head_pose.call_args_list
-    # First call: yaw left (-20), second: yaw right (20), third: return to neutral
+    # First call: yaw right (-20), second: yaw left (20), third: return to neutral
     assert create_calls[0].kwargs["yaw"] == -20
     assert create_calls[1].kwargs["yaw"] == 20
+
+
+# ---------------------------------------------------------------------------
+# track_face
+# ---------------------------------------------------------------------------
+
+
+async def test_track_face_detects_and_moves(mock_reachy, mock_create_head_pose):
+    """Test track_face detects a centered face and moves head toward it."""
+    import numpy as np
+    from unittest.mock import patch
+
+    fake_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+    mock_reachy.media.get_frame.return_value = fake_frame
+
+    # Coords in downscaled (0.25x) frame — will be scaled back to original
+    mock_cascade = MagicMock()
+    mock_cascade.detectMultiScale.return_value = np.array([[135, 65, 50, 50]])
+
+    with patch("reachy._get_face_cascade", return_value=mock_cascade):
+        result = await track_face()
+
+    assert "Face detected" in result
+    assert "moved head" in result
+    mock_reachy.goto_target.assert_called_once()
+
+
+async def test_track_face_no_face(mock_reachy):
+    """Test track_face returns message when no face is detected."""
+    import numpy as np
+    from unittest.mock import patch
+
+    fake_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+    mock_reachy.media.get_frame.return_value = fake_frame
+
+    mock_cascade = MagicMock()
+    mock_cascade.detectMultiScale.return_value = np.array([]).reshape(0, 4)
+
+    with patch("reachy._get_face_cascade", return_value=mock_cascade):
+        result = await track_face()
+
+    assert result == "No face detected"
+    mock_reachy.goto_target.assert_not_called()
+
+
+async def test_track_face_camera_unavailable(mock_reachy):
+    """Test track_face handles missing camera."""
+    mock_reachy.media.get_frame.return_value = None
+
+    result = await track_face()
+
+    assert result == "Camera not available"
+
+
+async def test_track_face_picks_largest(mock_reachy, mock_create_head_pose):
+    """Test track_face picks the largest face when multiple are detected."""
+    import numpy as np
+    from unittest.mock import patch
+
+    fake_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+    mock_reachy.media.get_frame.return_value = fake_frame
+
+    # Two faces in downscaled (0.25x) frame coords
+    mock_cascade = MagicMock()
+    mock_cascade.detectMultiScale.return_value = np.array(
+        [
+            [25, 50, 12, 12],  # small face
+            [200, 60, 50, 50],  # large face — scales to (800, 240, 200, 200)
+        ]
+    )
+
+    with patch("reachy._get_face_cascade", return_value=mock_cascade):
+        result = await track_face()
+
+    # Should track the large face (center at 900, 340 in original coords)
+    assert "900" in result
+    assert "340" in result
+
+
+async def test_track_face_yaw_direction(mock_reachy, mock_create_head_pose):
+    """Test that a face on the right produces negative yaw (turn right)."""
+    import numpy as np
+    from unittest.mock import patch
+
+    fake_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+    mock_reachy.media.get_frame.return_value = fake_frame
+
+    # Face on the right side in downscaled coords (x=225 → original x=900)
+    mock_cascade = MagicMock()
+    mock_cascade.detectMultiScale.return_value = np.array([[225, 77, 25, 25]])
+
+    with patch("reachy._get_face_cascade", return_value=mock_cascade):
+        result = await track_face()
+
+    # Face center at x=950 in original, image center at x=640
+    # offset_x positive → yaw negative (turn right)
+    assert "yaw=-" in result
 
 
 # ---------------------------------------------------------------------------
