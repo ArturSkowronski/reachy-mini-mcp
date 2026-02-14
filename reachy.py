@@ -503,6 +503,8 @@ def _get_face_cascade():
     if _face_cascade is None:
         cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         _face_cascade = cv2.CascadeClassifier(cascade_path)
+        if _face_cascade.empty():
+            raise RuntimeError(f"Failed to load face cascade from {cascade_path}")
     return _face_cascade
 
 
@@ -512,15 +514,18 @@ _VERTICAL_FOV = 40.0  # degrees
 
 
 @mcp.tool()
-async def track_face(duration: float = 0.8) -> str:
+async def track_face(duration: float = 0.4) -> str:
     """Detect a face using the camera and turn the robot's head toward it.
 
     Captures a frame, runs face detection, and moves the head so the
     detected face is centered in the camera view. If multiple faces are
-    found, tracks the largest one. Call repeatedly for continuous tracking.
+    found, tracks the largest one.
+
+    Note: computes an absolute head pose from neutral. For best results,
+    call reset_position first or use from a near-neutral head position.
 
     Args:
-        duration: Head movement duration in seconds (default: 0.8)
+        duration: Head movement duration in seconds (default: 0.4)
     """
     face_cascade = _get_face_cascade()
 
@@ -529,19 +534,23 @@ async def track_face(duration: float = 0.8) -> str:
         if frame is None:
             return "Camera not available"
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        img_h, img_w = frame.shape[:2]
+
+        # Downscale for faster detection
+        scale = 0.25
+        small = cv2.resize(frame, None, fx=scale, fy=scale)
+        gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
         faces = face_cascade.detectMultiScale(
-            gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
+            gray, scaleFactor=1.1, minNeighbors=5, minSize=(15, 15)
         )
 
         if len(faces) == 0:
             return "No face detected"
 
-        # Pick the largest face by area
+        # Pick the largest face by area and scale coords back
         largest = max(faces, key=lambda f: f[2] * f[3])
-        x, y, w, h = largest
+        x, y, w, h = [v / scale for v in largest]
 
-        img_h, img_w = frame.shape[:2]
         face_center_x = x + w / 2
         face_center_y = y + h / 2
 

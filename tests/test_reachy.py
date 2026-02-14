@@ -705,7 +705,7 @@ async def test_shake_head_yaw_values(mock_reachy, mock_create_head_pose):
     await shake_head(cycles=1)
 
     create_calls = mock_create_head_pose.call_args_list
-    # First call: yaw left (-20), second: yaw right (20), third: return to neutral
+    # First call: yaw right (-20), second: yaw left (20), third: return to neutral
     assert create_calls[0].kwargs["yaw"] == -20
     assert create_calls[1].kwargs["yaw"] == 20
 
@@ -720,13 +720,12 @@ async def test_track_face_detects_and_moves(mock_reachy, mock_create_head_pose):
     import numpy as np
     from unittest.mock import patch
 
-    # Create a frame with a bright rectangle where a face would be
     fake_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
     mock_reachy.media.get_frame.return_value = fake_frame
 
-    # Mock the cascade to return a face near the center
+    # Coords in downscaled (0.25x) frame — will be scaled back to original
     mock_cascade = MagicMock()
-    mock_cascade.detectMultiScale.return_value = np.array([[540, 260, 200, 200]])
+    mock_cascade.detectMultiScale.return_value = np.array([[135, 65, 50, 50]])
 
     with patch("reachy._get_face_cascade", return_value=mock_cascade):
         result = await track_face()
@@ -771,21 +770,21 @@ async def test_track_face_picks_largest(mock_reachy, mock_create_head_pose):
     fake_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
     mock_reachy.media.get_frame.return_value = fake_frame
 
-    # Two faces: small one at left, large one at right
+    # Two faces in downscaled (0.25x) frame coords
     mock_cascade = MagicMock()
     mock_cascade.detectMultiScale.return_value = np.array(
         [
-            [100, 200, 50, 50],  # small face (area 2500)
-            [800, 250, 200, 200],  # large face (area 40000)
+            [25, 50, 12, 12],  # small face
+            [200, 60, 50, 50],  # large face — scales to (800, 240, 200, 200)
         ]
     )
 
     with patch("reachy._get_face_cascade", return_value=mock_cascade):
         result = await track_face()
 
-    # Should track the large face (center at 900, 350)
+    # Should track the large face (center at 900, 340 in original coords)
     assert "900" in result
-    assert "350" in result
+    assert "340" in result
 
 
 async def test_track_face_yaw_direction(mock_reachy, mock_create_head_pose):
@@ -796,16 +795,15 @@ async def test_track_face_yaw_direction(mock_reachy, mock_create_head_pose):
     fake_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
     mock_reachy.media.get_frame.return_value = fake_frame
 
-    # Face on the right side of the image (x=900)
+    # Face on the right side in downscaled coords (x=225 → original x=900)
     mock_cascade = MagicMock()
-    mock_cascade.detectMultiScale.return_value = np.array([[900, 310, 100, 100]])
+    mock_cascade.detectMultiScale.return_value = np.array([[225, 77, 25, 25]])
 
     with patch("reachy._get_face_cascade", return_value=mock_cascade):
         result = await track_face()
 
-    # Face center at x=950, image center at x=640
-    # offset_x = 950 - 640 = 310 (positive = right side)
-    # yaw = -(310/1280)*65 = negative (turn right)
+    # Face center at x=950 in original, image center at x=640
+    # offset_x positive → yaw negative (turn right)
     assert "yaw=-" in result
 
 
