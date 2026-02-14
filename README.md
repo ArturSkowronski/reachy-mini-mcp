@@ -105,6 +105,17 @@ Optional overrides: `ELEVENLABS_MODEL_ID` (default: `eleven_multilingual_v2`), `
 | `reset_position` | Return head and antennas to neutral rest pose |
 | `do_barrel_roll` | Choreographed head tilt + antenna wiggle sequence |
 
+### Resources
+
+The server also exposes MCP resources that let AI assistants discover robot capabilities dynamically:
+
+| Resource URI | Description |
+|-------------|-------------|
+| `reachy://emotions` | Supported emoji-to-emotion mappings |
+| `reachy://sounds` | Available built-in sound names |
+| `reachy://limits` | Physical limits (antenna range, head DOF, camera specs) |
+| `reachy://capabilities` | All tools grouped by category (vision, movement, expression, audio, lifecycle) |
+
 ### Vision
 
 `capture_image` grabs a frame from Reachy Mini's wide-angle HD camera and returns it as inline JPEG content through the MCP protocol. The AI assistant receives the image directly in the conversation -- no file paths, no URLs, no extra setup.

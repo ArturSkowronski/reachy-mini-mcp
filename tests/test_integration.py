@@ -174,3 +174,63 @@ async def test_call_tool_unsupported_emoji_via_mcp():
             result = await session.call_tool("express_emotion", {"emoji": "🔥"})
 
     assert "Unsupported emoji" in result.content[0].text
+
+
+# ---------------------------------------------------------------------------
+# Resources through MCP
+# ---------------------------------------------------------------------------
+
+EXPECTED_RESOURCES = {
+    "reachy://emotions",
+    "reachy://sounds",
+    "reachy://limits",
+    "reachy://capabilities",
+}
+
+
+async def test_all_resources_registered():
+    """All 4 resources should be discoverable via list_resources."""
+    async with create_connected_server_and_client_session(server) as session:
+        result = await session.list_resources()
+        resource_uris = {str(r.uri) for r in result.resources}
+
+    assert resource_uris == EXPECTED_RESOURCES
+
+
+async def test_read_emotions_resource():
+    """Reading reachy://emotions should return JSON with emoji mappings."""
+    import json
+
+    async with create_connected_server_and_client_session(server) as session:
+        result = await session.read_resource("reachy://emotions")
+
+    data = json.loads(result.contents[0].text)
+    assert data["😊"] == "happy"
+    assert data["😢"] == "sad"
+    assert len(data) == 10
+
+
+async def test_read_sounds_resource():
+    """Reading reachy://sounds should return JSON list of sound names."""
+    import json
+
+    async with create_connected_server_and_client_session(server) as session:
+        result = await session.read_resource("reachy://sounds")
+
+    data = json.loads(result.contents[0].text)
+    assert "dance1" in data
+    assert "wake_up" in data
+
+
+async def test_read_capabilities_resource():
+    """Reading reachy://capabilities should return categorized tool lists."""
+    import json
+
+    async with create_connected_server_and_client_session(server) as session:
+        result = await session.read_resource("reachy://capabilities")
+
+    data = json.loads(result.contents[0].text)
+    assert "vision" in data
+    assert "track_face" in data["vision"]
+    assert "movement" in data
+    assert "nod" in data["movement"]

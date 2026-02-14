@@ -11,6 +11,86 @@ from reachy_elevenlabs import elevenlabs_tts_to_temp_wav, load_elevenlabs_config
 # Initialize FastMCP server
 mcp = FastMCP("reachy-mini-mcp")
 
+# ---------------------------------------------------------------------------
+# MCP Resources — discoverable robot metadata
+# ---------------------------------------------------------------------------
+
+EMOTIONS = {
+    "😊": "happy",
+    "😕": "confused",
+    "😤": "impatient",
+    "😴": "sleepy",
+    "👋": "greeting",
+    "🤔": "thinking",
+    "😮": "surprised",
+    "😢": "sad",
+    "🎉": "celebrate",
+    "😐": "neutral",
+}
+
+SOUNDS = ["wake_up", "go_sleep", "confused1", "impatient1", "dance1", "count"]
+
+
+@mcp.resource("reachy://emotions")
+def get_emotions() -> str:
+    """Supported emoji-to-emotion mappings for express_emotion tool."""
+    import json
+
+    return json.dumps(
+        {emoji: emotion for emoji, emotion in EMOTIONS.items()},
+        ensure_ascii=False,
+    )
+
+
+@mcp.resource("reachy://sounds")
+def get_sounds() -> str:
+    """Available built-in sounds for play_sound tool."""
+    import json
+
+    return json.dumps(SOUNDS)
+
+
+@mcp.resource("reachy://limits")
+def get_limits() -> str:
+    """Physical limits and ranges for the robot's actuators."""
+    import json
+
+    return json.dumps(
+        {
+            "antennas": {"min_radians": -3.14, "max_radians": 3.14},
+            "head_position": {"unit": "mm", "axes": ["x", "y", "z"]},
+            "head_rotation": {"unit": "degrees", "axes": ["roll", "pitch", "yaw"]},
+            "camera": {"resolution": "1280x720", "format": "BGR"},
+        }
+    )
+
+
+@mcp.resource("reachy://capabilities")
+def get_capabilities() -> str:
+    """Summary of robot capabilities grouped by category."""
+    import json
+
+    return json.dumps(
+        {
+            "vision": ["capture_image", "scan_surroundings", "track_face"],
+            "movement": [
+                "move_head",
+                "move_antennas",
+                "look_at_point",
+                "nod",
+                "shake_head",
+            ],
+            "expression": ["express_emotion", "do_barrel_roll"],
+            "audio": ["play_sound", "speak_text", "detect_sound_direction"],
+            "lifecycle": ["wake_up", "go_to_sleep", "reset_position"],
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# MCP Tools
+# ---------------------------------------------------------------------------
+
 
 @mcp.tool()
 async def do_barrel_roll() -> str:
