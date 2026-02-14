@@ -137,6 +137,39 @@ Claude: "Starting from the left I can see a window with blinds,
 
 The camera returns a standard BGR numpy frame from OpenCV, which gets JPEG-compressed and delivered as MCP `ImageContent`. Any multimodal AI model that supports image inputs can process it -- Claude, GPT-4o, Gemini, etc.
 
+### Tool annotations
+
+Every tool carries semantic annotations that tell AI clients how to use it safely:
+
+| Annotation | Meaning | Tools |
+|-----------|---------|-------|
+| `readOnlyHint` | Doesn't change robot state | `capture_image`, `detect_sound_direction` |
+| `idempotentHint` | Safe to call repeatedly | All tools |
+| `destructiveHint=false` | No irreversible actions | All tools |
+| `openWorldHint` | Calls external services | `speak_text` (ElevenLabs API) |
+
+### Prompts
+
+Pre-built prompt templates that guide AI assistants through common robot interaction scenarios:
+
+| Prompt | Description |
+|--------|-------------|
+| `greet_user` | Wake up the robot, express happiness, and greet by name |
+| `explore_room` | Scan surroundings with the camera and describe the environment |
+| `react_to_conversation` | Use gestures and emotions to physically react during chat |
+| `find_person` | Use camera and face tracking to locate and follow a person |
+
+### Resources
+
+The server exposes MCP resources that let AI assistants discover robot capabilities dynamically:
+
+| Resource URI | Description |
+|-------------|-------------|
+| `reachy://emotions` | Supported emoji-to-emotion mappings |
+| `reachy://sounds` | Available built-in sound names |
+| `reachy://limits` | Physical limits (antenna range, head DOF, camera specs) |
+| `reachy://capabilities` | All tools grouped by category (vision, movement, expression, audio, lifecycle) |
+
 ### Emotion system
 
 `express_emotion` maps emoji characters to choreographed movements:
