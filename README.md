@@ -102,6 +102,27 @@ Optional overrides: `ELEVENLABS_MODEL_ID` (default: `eleven_multilingual_v2`), `
 | `reset_position` | Return head and antennas to neutral rest pose |
 | `do_barrel_roll` | Choreographed head tilt + antenna wiggle sequence |
 
+### Vision
+
+`capture_image` grabs a frame from Reachy Mini's wide-angle HD camera and returns it as inline JPEG content through the MCP protocol. The AI assistant receives the image directly in the conversation -- no file paths, no URLs, no extra setup.
+
+`scan_surroundings` takes this further by panning the camera across multiple angles and returning all frames in a single response:
+
+```
+User:  "Look around and describe the room"
+
+       Claude calls scan_surroundings(steps=5, yaw_range=120)
+       <- Robot pans from -60deg to +60deg in 5 steps
+       <- MCP returns 5 labeled JPEG frames + summary text
+
+Claude: "Starting from the left I can see a window with blinds,
+         then a whiteboard, your desk with two monitors in the
+         center, a bookshelf to the right, and a door at the
+         far right."
+```
+
+The camera returns a standard BGR numpy frame from OpenCV, which gets JPEG-compressed and delivered as MCP `ImageContent`. Any multimodal AI model that supports image inputs can process it -- Claude, GPT-4o, Gemini, etc.
+
 ### Emotion system
 
 `express_emotion` maps emoji characters to choreographed movements:
