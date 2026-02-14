@@ -25,6 +25,7 @@ EXPECTED_TOOLS = {
     "reset_position",
     "scan_surroundings",
     "shake_head",
+    "track_face",
     "wake_up",
     "go_to_sleep",
     "detect_sound_direction",
