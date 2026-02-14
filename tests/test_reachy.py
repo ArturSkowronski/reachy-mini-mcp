@@ -1,5 +1,7 @@
 """Unit tests for reachy.py MCP tools."""
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from reachy import (
@@ -11,6 +13,7 @@ from reachy import (
     move_head,
     play_sound,
     reset_position,
+    speak_text,
     wake_up,
 )
 
@@ -479,13 +482,39 @@ async def test_express_emotion_multiple_unsupported(mock_reachy, emoji):
 
 
 # ---------------------------------------------------------------------------
+# speak_text
+# ---------------------------------------------------------------------------
+
+
+async def test_speak_text_plays_audio_and_cleans_temp_file(mock_reachy, tmp_path):
+    """Test speak_text generates audio and plays it via Reachy media."""
+    from unittest.mock import AsyncMock, patch
+
+    temp_wav = tmp_path / "out.wav"
+    temp_wav.write_bytes(b"not-a-real-wav")
+
+    with (
+        patch("reachy.load_elevenlabs_config", return_value=MagicMock()),
+        patch(
+            "reachy.elevenlabs_tts_to_temp_wav",
+            new=AsyncMock(return_value=str(temp_wav)),
+        ),
+    ):
+        result = await speak_text("Hello!")
+
+    assert result == "Reachy spoke the provided text via ElevenLabs."
+    mock_reachy.media.play_sound.assert_called_once_with(str(temp_wav))
+    assert not temp_wav.exists()
+
+
+# ---------------------------------------------------------------------------
 # Connection error tests
 # ---------------------------------------------------------------------------
 
 
 async def test_wake_up_connection_error():
     """Test that connection errors propagate from wake_up."""
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import MagicMock, patch
 
     mock_class = MagicMock(side_effect=ConnectionError("Robot not found"))
     with patch("reachy.ReachyMini", mock_class):
@@ -495,7 +524,7 @@ async def test_wake_up_connection_error():
 
 async def test_move_head_connection_error():
     """Test that connection errors propagate from move_head."""
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import MagicMock, patch
 
     mock_class = MagicMock(side_effect=ConnectionError("Timeout"))
     with patch("reachy.ReachyMini", mock_class):
@@ -505,7 +534,7 @@ async def test_move_head_connection_error():
 
 async def test_detect_sound_connection_error():
     """Test that connection errors propagate from detect_sound_direction."""
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import MagicMock, patch
 
     mock_class = MagicMock(side_effect=OSError("Network unreachable"))
     with patch("reachy.ReachyMini", mock_class):

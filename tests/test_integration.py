@@ -25,6 +25,7 @@ EXPECTED_TOOLS = {
     "go_to_sleep",
     "detect_sound_direction",
     "move_head",
+    "speak_text",
 }
 
 

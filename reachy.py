@@ -1,9 +1,11 @@
+import os
 from typing import Any
 
-import httpx
 from mcp.server.fastmcp import FastMCP
 from reachy_mini import ReachyMini
 from reachy_mini.utils import create_head_pose
+
+from reachy_elevenlabs import elevenlabs_tts_to_temp_wav, load_elevenlabs_config
 
 # Initialize FastMCP server
 mcp = FastMCP("reachy-mini-mcp")
@@ -44,6 +46,68 @@ async def play_sound(sound_name: str) -> str:
     with ReachyMini() as mini:
         mini.media.play_sound(f"{sound_name}.wav")
     return f"Reachy played: {sound_name}"
+
+
+@mcp.tool()
+async def speak_text(
+    text: str,
+    voice_id: str | None = None,
+    model_id: str | None = None,
+    stability: float | None = None,
+    similarity_boost: float | None = None,
+    style: float | None = None,
+    use_speaker_boost: bool = True,
+    output_format: str | None = None,
+) -> str:
+    """Speak the provided text using ElevenLabs TTS and play it on Reachy Mini.
+
+    Configuration via environment variables:
+    - ELEVENLABS_API_KEY (required)
+    - ELEVENLABS_VOICE_ID (required unless passed as voice_id)
+    - ELEVENLABS_MODEL_ID (optional, default: eleven_multilingual_v2)
+    - ELEVENLABS_OUTPUT_FORMAT (optional, default: wav_44100)
+
+    Args:
+        text: Text to read aloud.
+        voice_id: ElevenLabs voice id override (optional).
+        model_id: ElevenLabs model id override (optional).
+        stability: Voice stability (0..1, optional).
+        similarity_boost: Similarity boost (0..1, optional).
+        style: Style exaggeration (0..1, optional).
+        use_speaker_boost: Whether to enable speaker boost (default: True).
+        output_format: ElevenLabs output format override (default: wav_44100).
+    """
+    config = load_elevenlabs_config(
+        api_key=os.getenv("ELEVENLABS_API_KEY"),
+        voice_id=voice_id,
+        model_id=model_id,
+        output_format=output_format,
+    )
+
+    voice_settings: dict[str, Any] = {"use_speaker_boost": use_speaker_boost}
+    if stability is not None:
+        voice_settings["stability"] = stability
+    if similarity_boost is not None:
+        voice_settings["similarity_boost"] = similarity_boost
+    if style is not None:
+        voice_settings["style"] = style
+
+    wav_path = await elevenlabs_tts_to_temp_wav(
+        text=text,
+        config=config,
+        voice_settings=voice_settings,
+    )
+
+    try:
+        with ReachyMini() as mini:
+            mini.media.play_sound(wav_path)
+    finally:
+        try:
+            os.remove(wav_path)
+        except FileNotFoundError:
+            pass
+
+    return "Reachy spoke the provided text via ElevenLabs."
 
 
 @mcp.tool()

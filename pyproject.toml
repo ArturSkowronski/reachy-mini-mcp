@@ -30,4 +30,4 @@ dev = [
 per-file-ignores = {"reachy.py" = ["F401"]}
 
 [tool.setuptools]
-py-modules = ["reachy"]
+py-modules = ["reachy", "reachy_elevenlabs"]
