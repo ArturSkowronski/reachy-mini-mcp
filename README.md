@@ -5,7 +5,18 @@
 [![MCP](https://img.shields.io/badge/MCP-compatible-green.svg)](https://modelcontextprotocol.io)
 [![Reachy Mini](https://img.shields.io/badge/robot-Reachy%20Mini-orange.svg)](https://www.pollen-robotics.com/reachy-mini/)
 
-MCP server that lets AI assistants control the [Reachy Mini](https://www.pollen-robotics.com/reachy-mini/) robot. Connect Claude, ChatGPT, or any MCP-compatible client and control head movement, antennas, emotions, and audio through natural language.
+-----------
+<table style="border: none;">
+<tr style="border: none;">
+<td style="width: 40%; vertical-align: middle; border: none;">
+  <img src="media/cover.png" />
+</td><td>
+MCP server that lets AI assistants control the <a href="https://www.pollen-robotics.com/reachy-mini/">Reachy Mini</a> robot. Connect Claude, ChatGPT, or any MCP-compatible client and control head movement, antennas, emotions, camera and audio through natural language.
+</td>
+</tr>
+</table>
+
+-----------
 
 ## How it works
 
@@ -13,7 +24,7 @@ MCP server that lets AI assistants control the [Reachy Mini](https://www.pollen-
 AI Assistant  --stdio-->  MCP Server (reachy.py)  -->  ReachyMini SDK  -->  Robot / Simulator
 ```
 
-The server exposes 16 tools via the [Model Context Protocol](https://modelcontextprotocol.io). An AI assistant calls these tools to see through the robot's camera, move the robot, express emotions, play sounds, or detect audio direction -- no robotics knowledge needed on the AI side.
+The server exposes 16 tools, 4 prompts, and 4 resources via the [Model Context Protocol](https://modelcontextprotocol.io). An AI assistant calls these tools to see through the robot's camera, move the robot, express emotions, play sounds, or detect audio direction -- no robotics knowledge needed on the AI side.
 
 ## Installation
 
@@ -144,7 +155,8 @@ Every tool carries semantic annotations that tell AI clients how to use it safel
 | Annotation | Meaning | Tools |
 |-----------|---------|-------|
 | `readOnlyHint` | Doesn't change robot state | `capture_image`, `detect_sound_direction` |
-| `idempotentHint` | Safe to call repeatedly | All tools |
+| `idempotentHint=true` | Safe to call repeatedly | `capture_image`, `detect_sound_direction` |
+| `idempotentHint=false` | Repeated calls repeat actions/costs | All movement/gesture/audio tools, including `speak_text` |
 | `destructiveHint=false` | No irreversible actions | All tools |
 | `openWorldHint` | Calls external services | `speak_text` (ElevenLabs API) |
 
@@ -158,17 +170,6 @@ Pre-built prompt templates that guide AI assistants through common robot interac
 | `explore_room` | Scan surroundings with the camera and describe the environment |
 | `react_to_conversation` | Use gestures and emotions to physically react during chat |
 | `find_person` | Use camera and face tracking to locate and follow a person |
-
-### Resources
-
-The server exposes MCP resources that let AI assistants discover robot capabilities dynamically:
-
-| Resource URI | Description |
-|-------------|-------------|
-| `reachy://emotions` | Supported emoji-to-emotion mappings |
-| `reachy://sounds` | Available built-in sound names |
-| `reachy://limits` | Physical limits (antenna range, head DOF, camera specs) |
-| `reachy://capabilities` | All tools grouped by category (vision, movement, expression, audio, lifecycle) |
 
 ### Emotion system
 
@@ -216,7 +217,3 @@ For debugging robot movements without the MCP layer:
 ```bash
 uv run python reachy_debug.py
 ```
-
-## Author
-
-Artur Skowronski (me@arturskowronski.com)
