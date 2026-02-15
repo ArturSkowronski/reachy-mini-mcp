@@ -91,9 +91,43 @@ To enable the `speak_text` tool, set these environment variables:
 ```bash
 export ELEVENLABS_API_KEY="your-api-key"
 export ELEVENLABS_VOICE_ID="your-voice-id"
+#
+# Optional override prefix (takes precedence):
+# export REACHY_ELEVENLABS_API_KEY="your-api-key"
+# export REACHY_ELEVENLABS_VOICE_ID="your-voice-id"
 ```
 
-Optional overrides: `ELEVENLABS_MODEL_ID` (default: `eleven_multilingual_v2`), `ELEVENLABS_OUTPUT_FORMAT` (default: `wav_44100`).
+Default voice (premade/free-tier friendly): `George` with Voice ID `JBFqnCBsd6RMkjVDRZzb`.
+
+Favorite voice (author preference): `Horatius` with Voice ID `qXpMhyvQqiRxWQs4qSSB`.
+
+Optional overrides: `ELEVENLABS_MODEL_ID` (default: `eleven_multilingual_v2`), `ELEVENLABS_OUTPUT_FORMAT` (default: `mp3_44100_128`).
+
+WAV support: if your ElevenLabs plan allows it, you can set `ELEVENLABS_OUTPUT_FORMAT=wav_44100` to get WAV output instead of MP3.
+
+#### MP3 vs WAV playback note
+
+- Default TTS output is MP3 (`mp3_44100_128`) because it works on lower ElevenLabs tiers.
+- Some Reachy audio backends/environments may not have MP3 decoding available. In that case, MP3 playback can fail even though WAV works.
+- If you need ElevenLabs to return WAV directly (`wav_44100`), ElevenLabs requires a higher tier (minimum **Pro**).
+- To force WAV output (when available), override the output format via environment variables:
+  - `REACHY_ELEVENLABS_OUTPUT_FORMAT=wav_44100` (preferred, takes precedence)
+  - or `ELEVENLABS_OUTPUT_FORMAT=wav_44100`
+
+## Environment variables
+
+General:
+- `NO_COLOR`: disable ANSI colors in `reachy_debug.py` output.
+
+Debug runner (`reachy_debug.py`):
+- `REACHY_DEBUG_ANNOUNCE_PAUSE_S` (default: `0.6`): pause after each announcement before running the step.
+- `REACHY_DEBUG_TTS_SPEED` (default: `0.8`): ElevenLabs speech speed.
+
+ElevenLabs (used by `speak_text` and `reachy_debug.py` announcements):
+- `REACHY_ELEVENLABS_API_KEY` or `ELEVENLABS_API_KEY` (required for TTS): API key. `REACHY_` prefixed value takes precedence.
+- `REACHY_ELEVENLABS_VOICE_ID` or `ELEVENLABS_VOICE_ID` (optional): voice id. Defaults to `JBFqnCBsd6RMkjVDRZzb` (George) if not set.
+- `REACHY_ELEVENLABS_MODEL_ID` or `ELEVENLABS_MODEL_ID` (optional): model id (default: `eleven_multilingual_v2`).
+- `REACHY_ELEVENLABS_OUTPUT_FORMAT` or `ELEVENLABS_OUTPUT_FORMAT` (optional): output format (default: `mp3_44100_128`, optionally `wav_44100` if your plan allows it).
 
 ## Available tools
 
@@ -212,8 +246,14 @@ pre-commit install
 
 ### Direct robot testing
 
-For debugging robot movements without the MCP layer:
+For a one-click, full sequential debug demo (movement, gestures, audio, vision, tracking) with per-step status checks:
 
 ```bash
 uv run python reachy_debug.py
 ```
+
+`reachy_debug.py` now:
+- Announces each upcoming test step (voice via ElevenLabs if configured, otherwise console fallback).
+- Executes a full demo suite in sequence.
+- Saves all captured images and a markdown run summary to `results/run-YYYYMMDD-HHMMSS/`.
+- Generates a single report file for the run: `run_report.md`.

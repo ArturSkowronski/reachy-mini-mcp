@@ -9,6 +9,9 @@ import httpx
 
 
 ELEVENLABS_API_BASE_URL = "https://api.elevenlabs.io/v1"
+# Default to a premade voice so free-tier users can use TTS via API by default.
+# (Horatius remains a documented favorite but may require additional access/plan.)
+DEFAULT_ELEVENLABS_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"  # George
 
 
 @dataclass(frozen=True)
@@ -16,7 +19,22 @@ class ElevenLabsConfig:
     api_key: str
     voice_id: str
     model_id: str = "eleven_multilingual_v2"
-    output_format: str = "wav_44100"
+    # NOTE: `wav_44100` requires Pro+ on ElevenLabs. `mp3_44100_128` works on Free.
+    output_format: str = "mp3_44100_128"
+
+
+def _accept_header_for_output_format(output_format: str) -> str:
+    fmt = output_format.lower()
+    if fmt.startswith("wav"):
+        return "audio/wav"
+    return "audio/mpeg"
+
+
+def _suffix_for_output_format(output_format: str) -> str:
+    fmt = output_format.lower()
+    if fmt.startswith("wav"):
+        return ".wav"
+    return ".mp3"
 
 
 def load_elevenlabs_config(
@@ -26,23 +44,33 @@ def load_elevenlabs_config(
     model_id: str | None = None,
     output_format: str | None = None,
 ) -> ElevenLabsConfig:
-    resolved_api_key = api_key or os.getenv("ELEVENLABS_API_KEY")
-    resolved_voice_id = voice_id or os.getenv("ELEVENLABS_VOICE_ID")
+    # Support REACHY_* overrides for convenience in robot deployments.
+    resolved_api_key = (
+        api_key or os.getenv("REACHY_ELEVENLABS_API_KEY") or os.getenv("ELEVENLABS_API_KEY")
+    )
+    resolved_voice_id = (
+        voice_id
+        or os.getenv("REACHY_ELEVENLABS_VOICE_ID")
+        or os.getenv("ELEVENLABS_VOICE_ID")
+        or DEFAULT_ELEVENLABS_VOICE_ID
+    )
 
     if not resolved_api_key:
-        raise ValueError("Missing ElevenLabs API key: set `ELEVENLABS_API_KEY`.")
-    if not resolved_voice_id:
-        raise ValueError("Missing ElevenLabs voice id: set `ELEVENLABS_VOICE_ID`.")
+        raise ValueError(
+            "Missing ElevenLabs API key: set `REACHY_ELEVENLABS_API_KEY` or `ELEVENLABS_API_KEY`."
+        )
 
     return ElevenLabsConfig(
         api_key=resolved_api_key,
         voice_id=resolved_voice_id,
         model_id=model_id
+        or os.getenv("REACHY_ELEVENLABS_MODEL_ID")
         or os.getenv("ELEVENLABS_MODEL_ID")
         or "eleven_multilingual_v2",
         output_format=output_format
+        or os.getenv("REACHY_ELEVENLABS_OUTPUT_FORMAT")
         or os.getenv("ELEVENLABS_OUTPUT_FORMAT")
-        or "wav_44100",
+        or "mp3_44100_128",
     )
 
 
@@ -65,7 +93,7 @@ async def elevenlabs_tts_bytes(
     headers = {
         "xi-api-key": config.api_key,
         "Content-Type": "application/json",
-        "Accept": "audio/wav",
+        "Accept": _accept_header_for_output_format(config.output_format),
     }
 
     async with httpx.AsyncClient(timeout=timeout_s) as client:
@@ -94,7 +122,9 @@ async def elevenlabs_tts_to_temp_wav(
     )
 
     tmp = tempfile.NamedTemporaryFile(
-        prefix="reachy_elevenlabs_", suffix=".wav", delete=False
+        prefix="reachy_elevenlabs_",
+        suffix=_suffix_for_output_format(config.output_format),
+        delete=False,
     )
     try:
         tmp.write(audio_bytes)

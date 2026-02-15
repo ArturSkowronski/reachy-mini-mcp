@@ -232,9 +232,9 @@ async def speak_text(
 
     Configuration via environment variables:
     - ELEVENLABS_API_KEY (required)
-    - ELEVENLABS_VOICE_ID (required unless passed as voice_id)
+    - ELEVENLABS_VOICE_ID (optional; defaults to a premade voice)
     - ELEVENLABS_MODEL_ID (optional, default: eleven_multilingual_v2)
-    - ELEVENLABS_OUTPUT_FORMAT (optional, default: wav_44100)
+    - ELEVENLABS_OUTPUT_FORMAT (optional, default: mp3_44100_128; you can use wav_44100 if your plan allows it)
 
     Args:
         text: Text to read aloud.
@@ -244,10 +244,10 @@ async def speak_text(
         similarity_boost: Similarity boost (0..1, optional).
         style: Style exaggeration (0..1, optional).
         use_speaker_boost: Whether to enable speaker boost (default: True).
-        output_format: ElevenLabs output format override (default: wav_44100).
+        output_format: ElevenLabs output format override (default: mp3_44100_128).
     """
+    # Note: load_elevenlabs_config supports both ELEVENLABS_* and REACHY_ELEVENLABS_* env vars.
     config = load_elevenlabs_config(
-        api_key=os.getenv("ELEVENLABS_API_KEY"),
         voice_id=voice_id,
         model_id=model_id,
         output_format=output_format,
@@ -261,7 +261,7 @@ async def speak_text(
     if style is not None:
         voice_settings["style"] = style
 
-    wav_path = await elevenlabs_tts_to_temp_wav(
+    audio_path = await elevenlabs_tts_to_temp_wav(
         text=text,
         config=config,
         voice_settings=voice_settings,
@@ -269,10 +269,10 @@ async def speak_text(
 
     try:
         with ReachyMini() as mini:
-            mini.media.play_sound(wav_path)
+            mini.media.play_sound(audio_path)
     finally:
         try:
-            os.remove(wav_path)
+            os.remove(audio_path)
         except FileNotFoundError:
             pass
 
