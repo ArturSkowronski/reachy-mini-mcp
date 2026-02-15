@@ -22,6 +22,8 @@ MCP server that lets AI assistants control the <a href="https://www.pollen-robot
 
 A short "dry run" of the `reachy_debug.py` sequential demo runner (simulator): step announcements, movements, vision, and artifacts.
 
+<video src="media/dry-run.mp4" controls muted playsinline style="max-width: 100%;"></video>
+
 <a href="media/dry-run.mp4">
   <img src="media/cover.png" alt="Reachy Mini MCP dry run video" />
 </a>
