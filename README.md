@@ -27,9 +27,15 @@ uv run python reachy_debug.py</code></pre>
 
 A short "dry run" of the `reachy_debug.py` sequential demo runner (simulator): step announcements, movements, vision, and artifacts.
 
-<video src="media/dry-run.mp4" controls muted playsinline style="max-width: 100%;"></video>
+<video controls muted playsinline style="max-width: 100%; height: auto;" preload="metadata">
+  <source src="https://arturskowronski.github.io/reachy-mini-mcp/media/dry-run.mp4" type="video/mp4" />
+  <p>
+    Your browser can’t play this video.
+    <a href="https://arturskowronski.github.io/reachy-mini-mcp/media/dry-run.mp4">Download MP4</a>.
+  </p>
+</video>
 
-[Watch the dry run video](media/dry-run.mp4)
+[Watch the dry run video on GitHub Pages](https://arturskowronski.github.io/reachy-mini-mcp/)
 
 ## How it works
 
