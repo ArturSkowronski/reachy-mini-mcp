@@ -18,6 +18,16 @@ MCP server that lets AI assistants control the <a href="https://www.pollen-robot
 
 -----------
 
+## Dry run (video)
+
+A short "dry run" of the `reachy_debug.py` sequential demo runner (simulator): step announcements, movements, vision, and artifacts.
+
+<a href="media/dry-run.mp4">
+  <img src="media/cover.png" alt="Reachy Mini MCP dry run video" />
+</a>
+
+[Watch the dry run video](media/dry-run.mp4)
+
 ## How it works
 
 ```
@@ -249,6 +259,9 @@ pre-commit install
 For a one-click, full sequential debug demo (movement, gestures, audio, vision, tracking) with per-step status checks:
 
 ```bash
+uv sync --extra reachy
+# If you want to auto-spawn the simulator daemon, also install:
+uv sync --extra reachy-sim
 uv run python reachy_debug.py
 ```
 
