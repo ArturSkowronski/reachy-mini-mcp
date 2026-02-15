@@ -861,7 +861,9 @@ def _ensure_daemon_on_path() -> None:
         return
     venv_daemon = SCRIPT_DIR / ".venv" / "bin" / "reachy-mini-daemon"
     if venv_daemon.exists():
-        os.environ["PATH"] = f"{venv_daemon.parent}{os.pathsep}{os.environ.get('PATH', '')}"
+        os.environ["PATH"] = (
+            f"{venv_daemon.parent}{os.pathsep}{os.environ.get('PATH', '')}"
+        )
 
 
 def _spawn_daemon(args: DebugArgs) -> None:
@@ -907,6 +909,7 @@ def run_demo_suite(args: DebugArgs) -> int:
     _print_banner(run_dir)
 
     try:
+
         def _connect() -> ReachyMini:
             # Never pass spawn_daemon/use_sim here: reachy_mini's daemon_check uses psutil,
             # which can be blocked on macOS in sandboxed environments.
@@ -933,9 +936,7 @@ def run_demo_suite(args: DebugArgs) -> int:
             mini_cm = _connect()
 
         with mini_cm as mini:
-            print(
-                f"{_c('[INFO]', _Color.BLUE)} Connected to Reachy Mini / simulator"
-            )
+            print(f"{_c('[INFO]', _Color.BLUE)} Connected to Reachy Mini / simulator")
             precheck_ok = _run_preflight_checks(mini, run_dir)
             if not precheck_ok:
                 print(
@@ -1003,8 +1004,9 @@ def run_demo_suite(args: DebugArgs) -> int:
                 (
                     "play_sound",
                     "Now testing onboard audio playback.",
-                    lambda: mini.media.play_sound("count.wav")
-                    or "Sound played: count.wav",
+                    lambda: (
+                        mini.media.play_sound("count.wav") or "Sound played: count.wav"
+                    ),
                 ),
                 (
                     "detect_sound_direction",

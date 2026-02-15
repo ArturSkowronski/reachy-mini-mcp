@@ -17,7 +17,9 @@ def disable_zenoh_shared_memory() -> None:
 
     # Also set the override env var so any subprocesses or native layers that
     # consult it will inherit the setting.
-    os.environ.setdefault("ZENOH_CONFIG_OVERRIDE", "transport/shared_memory/enabled=false")
+    os.environ.setdefault(
+        "ZENOH_CONFIG_OVERRIDE", "transport/shared_memory/enabled=false"
+    )
 
     if getattr(zenoh, "_reachy_shm_disabled", False):
         return
