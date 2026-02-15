@@ -28,9 +28,13 @@ except Exception as exc:  # pragma: no cover
 
 
 from reachy_elevenlabs import elevenlabs_tts_to_temp_audio_file, load_elevenlabs_config
+from reachy_zenoh_patch import disable_zenoh_shared_memory
 
 # Initialize FastMCP server
 mcp = FastMCP("reachy-mini-mcp")
+
+# Avoid Zenoh POSIX shm errors in sandboxed environments by forcing shared memory off.
+disable_zenoh_shared_memory()
 
 # ---------------------------------------------------------------------------
 # Tool annotation presets

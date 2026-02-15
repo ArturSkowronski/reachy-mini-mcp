@@ -1,22 +1,27 @@
-# reachy-mini-mcp
+# Reachy Mini MCP
+
+Control the [Reachy Mini](https://www.pollen-robotics.com/reachy-mini/) robot (or simulator) from Claude, ChatGPT, or any MCP-compatible client.
 
 [![CI](https://github.com/ArturSkowronski/reachy-mini-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ArturSkowronski/reachy-mini-mcp/actions/workflows/ci.yml)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/MCP-compatible-green.svg)](https://modelcontextprotocol.io)
 [![Reachy Mini](https://img.shields.io/badge/robot-Reachy%20Mini-orange.svg)](https://www.pollen-robotics.com/reachy-mini/)
 
------------
 <table style="border: none;">
 <tr style="border: none;">
-<td style="width: 40%; vertical-align: middle; border: none;">
-  <img src="media/cover.png" />
-</td><td>
-MCP server that lets AI assistants control the <a href="https://www.pollen-robotics.com/reachy-mini/">Reachy Mini</a> robot. Connect Claude, ChatGPT, or any MCP-compatible client and control head movement, antennas, emotions, camera and audio through natural language.
+<td style="width: 42%; vertical-align: middle; border: none;">
+  <img src="media/cover.png" alt="Reachy Mini MCP" />
+</td>
+<td style="vertical-align: middle; border: none;">
+<b>Quickstart</b>
+<pre><code>uv sync --extra reachy
+uv run reachy.py</code></pre>
+<b>Simulator demo</b>
+<pre><code>uv sync --extra reachy-sim
+uv run python reachy_debug.py</code></pre>
 </td>
 </tr>
 </table>
-
------------
 
 ## Dry run (video)
 

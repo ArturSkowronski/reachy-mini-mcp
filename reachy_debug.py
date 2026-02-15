@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import argparse
 import asyncio
 import os
+import shutil
 import socket
+import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -37,6 +41,7 @@ from reachy_elevenlabs import (
     elevenlabs_tts_to_temp_audio_file,
     load_elevenlabs_config,
 )
+from reachy_zenoh_patch import disable_zenoh_shared_memory
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -796,123 +801,273 @@ def _build_markdown_report(run_dir: Path, results: list[StepResult]) -> None:
     print(f"[INFO] Report saved: {report_path}")
 
 
-def run_demo_suite() -> int:
+@dataclass(frozen=True)
+class DebugArgs:
+    robot_name: str
+    localhost_only: bool
+    spawn_daemon: bool
+    use_sim: bool
+    timeout_s: float
+    media_backend: str
+
+
+def _parse_args(argv: list[str]) -> DebugArgs:
+    p = argparse.ArgumentParser(
+        prog="reachy_debug.py",
+        description="Reachy Mini debug runner (connects to robot or simulator and runs a demo suite).",
+    )
+    p.add_argument("--robot-name", default="reachy_mini")
+    p.add_argument(
+        "--timeout-s",
+        type=float,
+        default=float(os.getenv("REACHY_DEBUG_TIMEOUT_S", "10")),
+        help="Connection timeout for ReachyMini client.",
+    )
+    p.add_argument(
+        "--media-backend",
+        default=os.getenv("REACHY_DEBUG_MEDIA_BACKEND", "default"),
+        help='Use "no_media" to disable media. Other values use auto-detection.',
+    )
+    p.add_argument(
+        "--no-localhost-only",
+        action="store_true",
+        help="Allow connecting to non-localhost daemons (advanced).",
+    )
+    # Defaults are set for the common local-dev case: start the simulator daemon automatically.
+    p.add_argument(
+        "--no-spawn-daemon",
+        action="store_true",
+        help="Do not attempt to spawn reachy-mini-daemon automatically.",
+    )
+    p.add_argument(
+        "--no-sim",
+        action="store_true",
+        help="When spawning a daemon, do not enable simulation mode.",
+    )
+    ns = p.parse_args(argv)
+    return DebugArgs(
+        robot_name=str(ns.robot_name),
+        localhost_only=not bool(ns.no_localhost_only),
+        spawn_daemon=not bool(ns.no_spawn_daemon),
+        use_sim=not bool(ns.no_sim),
+        timeout_s=float(ns.timeout_s),
+        media_backend=str(ns.media_backend),
+    )
+
+
+def _ensure_daemon_on_path() -> None:
+    """Ensure reachy-mini-daemon is resolvable, even when the venv isn't activated."""
+    if shutil.which("reachy-mini-daemon"):
+        return
+    venv_daemon = SCRIPT_DIR / ".venv" / "bin" / "reachy-mini-daemon"
+    if venv_daemon.exists():
+        os.environ["PATH"] = f"{venv_daemon.parent}{os.pathsep}{os.environ.get('PATH', '')}"
+
+
+def _spawn_daemon(args: DebugArgs) -> None:
+    """Spawn reachy-mini-daemon without using psutil (which may be blocked in sandboxed envs)."""
+    _ensure_daemon_on_path()
+
+    if args.use_sim:
+        # Reachy Mini simulation backend requires MuJoCo extra deps.
+        try:
+            import importlib.util
+
+            if importlib.util.find_spec("mujoco") is None:
+                raise RuntimeError(
+                    "Simulation requested but MuJoCo is not installed. "
+                    "Install with `uv sync --extra reachy-sim` (or `pip install 'reachy-mini[mujoco]'`)."
+                )
+        except Exception as exc:
+            # Surface a clear error instead of spawning a daemon that will die immediately.
+            raise RuntimeError(str(exc)) from exc
+
+    cmd = ["reachy-mini-daemon", "--headless", "--robot-name", args.robot_name]
+    if args.use_sim:
+        cmd.append("--sim")
+    if args.localhost_only:
+        cmd.append("--localhost-only")
+    else:
+        cmd.append("--no-localhost-only")
+
+    env = dict(os.environ)
+    # Ensure the daemon also runs with Zenoh shared memory disabled.
+    env.setdefault("ZENOH_CONFIG_OVERRIDE", "transport/shared_memory/enabled=false")
+    subprocess.Popen(cmd, start_new_session=True, env=env)
+
+
+def run_demo_suite(args: DebugArgs) -> int:
     run_dir = _create_run_dir()
     results: list[StepResult] = []
     step_no = 0
 
-    with ReachyMini() as mini:
-        _print_banner(run_dir)
-        print(f"{_c('[INFO]', _Color.BLUE)} Connected to Reachy Mini / simulator")
-        precheck_ok = _run_preflight_checks(mini, run_dir)
-        if not precheck_ok:
+    # Avoid Zenoh POSIX shm errors in sandboxed environments by forcing shared memory off.
+    disable_zenoh_shared_memory()
+
+    _print_banner(run_dir)
+
+    try:
+        def _connect() -> ReachyMini:
+            # Never pass spawn_daemon/use_sim here: reachy_mini's daemon_check uses psutil,
+            # which can be blocked on macOS in sandboxed environments.
+            return ReachyMini(
+                robot_name=args.robot_name,
+                localhost_only=args.localhost_only,
+                spawn_daemon=False,
+                use_sim=False,
+                timeout=args.timeout_s,
+                media_backend=args.media_backend,
+            )
+
+        try:
+            mini_cm = _connect()
+        except Exception as exc:
+            if not args.spawn_daemon:
+                raise
             print(
-                f"{_c('[FATAL]', _Color.RED + _Color.BOLD)} Precheck failed. Aborting debug run before demo steps."
+                f"{_c('[INFO]', _Color.BLUE)} Reachy daemon not reachable ({exc}); spawning headless daemon "
+                f"({'sim' if args.use_sim else 'robot'}) and retrying..."
             )
-            return 1
+            _spawn_daemon(args)
+            time.sleep(2.0)
+            mini_cm = _connect()
 
-        def run_step(name: str, announce_text: str, run_fn: Callable[[], str]) -> None:
-            nonlocal step_no
-            step_no += 1
-            _execute_step(
-                mini=mini,
-                name=name,
-                announce_text=announce_text,
-                run_fn=run_fn,
-                results=results,
-                step_no=step_no,
-                total_steps=total_steps,
+        with mini_cm as mini:
+            print(
+                f"{_c('[INFO]', _Color.BLUE)} Connected to Reachy Mini / simulator"
             )
+            precheck_ok = _run_preflight_checks(mini, run_dir)
+            if not precheck_ok:
+                print(
+                    f"{_c('[FATAL]', _Color.RED + _Color.BOLD)} Precheck failed. Aborting debug run before demo steps."
+                )
+                return 1
 
-        demo_steps: list[tuple[str, str, Callable[[], str]]] = [
-            (
-                "wake_up",
-                "Now testing robot wake-up behavior.",
-                lambda: mini.wake_up() or "Wake-up animation executed",
-            ),
-            (
-                "move_head",
-                "Now testing 6-DoF head movement.",
-                lambda: (
-                    mini.goto_target(
-                        head=create_head_pose(
-                            x=10,
-                            y=0,
-                            z=15,
-                            roll=8,
-                            pitch=-10,
-                            yaw=20,
-                            mm=True,
-                            degrees=True,
-                        ),
-                        duration=1.0,
-                    )
-                    or "Head pose executed"
+            def run_step(
+                name: str, announce_text: str, run_fn: Callable[[], str]
+            ) -> None:
+                nonlocal step_no
+                step_no += 1
+                _execute_step(
+                    mini=mini,
+                    name=name,
+                    announce_text=announce_text,
+                    run_fn=run_fn,
+                    results=results,
+                    step_no=step_no,
+                    total_steps=total_steps,
+                )
+
+            demo_steps: list[tuple[str, str, Callable[[], str]]] = [
+                (
+                    "wake_up",
+                    "Now testing robot wake-up behavior.",
+                    lambda: mini.wake_up() or "Wake-up animation executed",
                 ),
-            ),
-            (
-                "move_antennas",
-                "Now testing antenna movement.",
-                lambda: _step_move_antennas(mini),
-            ),
-            (
-                "look_at_point",
-                "Now testing look-at-point behavior in 3D space.",
-                lambda: _step_look_at_point(mini),
-            ),
-            ("gesture_nod", "Now testing nod gesture.", lambda: _step_nod(mini)),
-            (
-                "gesture_shake_head",
-                "Now testing shake-head gesture.",
-                lambda: _step_shake_head(mini),
-            ),
-            (
-                "play_sound",
-                "Now testing onboard audio playback.",
-                lambda: mini.media.play_sound("count.wav") or "Sound played: count.wav",
-            ),
-            (
-                "detect_sound_direction",
-                "Now testing sound direction detection.",
-                lambda: _step_detect_sound_direction(mini),
-            ),
-            (
-                "capture_image",
-                "Now testing single camera capture.",
-                lambda: _step_capture_image(mini, run_dir),
-            ),
-            (
-                "scan_surroundings",
-                "Now testing panoramic surroundings scan.",
-                lambda: _step_scan_surroundings(mini, run_dir),
-            ),
-            (
-                "track_face",
-                "Now testing face tracking.",
-                lambda: _step_track_face(mini),
-            ),
-            (
-                "do_barrel_roll",
-                "Now testing barrel-roll sequence.",
-                lambda: _step_barrel_roll(mini),
-            ),
-            (
-                "go_to_sleep",
-                "Finally, testing sleep mode transition.",
-                lambda: mini.goto_sleep() or "Sleep-mode animation executed",
-            ),
-        ]
+                (
+                    "move_head",
+                    "Now testing 6-DoF head movement.",
+                    lambda: (
+                        mini.goto_target(
+                            head=create_head_pose(
+                                x=10,
+                                y=0,
+                                z=15,
+                                roll=8,
+                                pitch=-10,
+                                yaw=20,
+                                mm=True,
+                                degrees=True,
+                            ),
+                            duration=1.0,
+                        )
+                        or "Head pose executed"
+                    ),
+                ),
+                (
+                    "move_antennas",
+                    "Now testing antenna movement.",
+                    lambda: _step_move_antennas(mini),
+                ),
+                (
+                    "look_at_point",
+                    "Now testing look-at-point behavior in 3D space.",
+                    lambda: _step_look_at_point(mini),
+                ),
+                ("gesture_nod", "Now testing nod gesture.", lambda: _step_nod(mini)),
+                (
+                    "gesture_shake_head",
+                    "Now testing shake-head gesture.",
+                    lambda: _step_shake_head(mini),
+                ),
+                (
+                    "play_sound",
+                    "Now testing onboard audio playback.",
+                    lambda: mini.media.play_sound("count.wav")
+                    or "Sound played: count.wav",
+                ),
+                (
+                    "detect_sound_direction",
+                    "Now testing sound direction detection.",
+                    lambda: _step_detect_sound_direction(mini),
+                ),
+                (
+                    "capture_image",
+                    "Now testing single camera capture.",
+                    lambda: _step_capture_image(mini, run_dir),
+                ),
+                (
+                    "scan_surroundings",
+                    "Now testing panoramic surroundings scan.",
+                    lambda: _step_scan_surroundings(mini, run_dir),
+                ),
+                (
+                    "track_face",
+                    "Now testing face tracking.",
+                    lambda: _step_track_face(mini),
+                ),
+                (
+                    "do_barrel_roll",
+                    "Now testing barrel-roll sequence.",
+                    lambda: _step_barrel_roll(mini),
+                ),
+                (
+                    "go_to_sleep",
+                    "Finally, testing sleep mode transition.",
+                    lambda: mini.goto_sleep() or "Sleep-mode animation executed",
+                ),
+            ]
 
-        total_steps = len(demo_steps)
-        for name, announce_text, run_fn in demo_steps:
-            run_step(name=name, announce_text=announce_text, run_fn=run_fn)
+            total_steps = len(demo_steps)
+            for name, announce_text, run_fn in demo_steps:
+                run_step(name=name, announce_text=announce_text, run_fn=run_fn)
+    except Exception as exc:
+        # Still emit a report so users can see that connection was the blocker.
+        results.append(
+            StepResult(
+                name="connect",
+                status="FAIL",
+                details=(
+                    f"{exc}\n"
+                    "Tip: Manually start the daemon with:\n"
+                    "`./.venv/bin/reachy-mini-daemon --sim --headless`\n"
+                    "Or run this script with `--no-spawn-daemon` to only attempt an existing daemon."
+                ),
+                started_at=_utc_now_iso(),
+                finished_at=_utc_now_iso(),
+            )
+        )
+        print(
+            f"{_c('[FATAL]', _Color.RED + _Color.BOLD)} Could not connect to Reachy Mini / simulator: {exc}"
+        )
 
     _build_markdown_report(run_dir, results)
     return 0 if all(r.status == "PASS" for r in results) else 1
 
 
 def main() -> None:
-    raise SystemExit(run_demo_suite())
+    args = _parse_args(sys.argv[1:])
+    raise SystemExit(run_demo_suite(args))
 
 
 if __name__ == "__main__":

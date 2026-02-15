@@ -23,6 +23,10 @@ reachy = [
     # Full Reachy Mini SDK (may pull heavy platform-specific deps).
     "reachy-mini",
 ]
+reachy-sim = [
+    # Simulation backend (MuJoCo).
+    "reachy-mini[mujoco]",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
@@ -36,4 +40,4 @@ dev = [
 per-file-ignores = {"reachy.py" = ["F401"]}
 
 [tool.setuptools]
-py-modules = ["reachy", "reachy_elevenlabs"]
+py-modules = ["reachy", "reachy_elevenlabs", "reachy_zenoh_patch"]
