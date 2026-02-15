@@ -7,8 +7,26 @@ import cv2
 from mcp.server.fastmcp import Context, FastMCP, Image
 from mcp.server.fastmcp.prompts.base import AssistantMessage, UserMessage
 from mcp.types import ToolAnnotations
-from reachy_mini import ReachyMini
-from reachy_mini.utils import create_head_pose
+
+try:
+    from reachy_mini import ReachyMini
+    from reachy_mini.utils import create_head_pose
+except Exception as exc:  # pragma: no cover
+    _reachy_mini_import_error = exc
+
+    class ReachyMini:  # type: ignore[no-redef]
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError(
+                "reachy-mini is not installed. Install with `uv sync --extra reachy` "
+                "(or `pip install 'reachy-mini-mcp[reachy]'`)."
+            ) from _reachy_mini_import_error
+
+    def create_head_pose(*args, **kwargs):  # type: ignore[no-redef]
+        raise RuntimeError(
+            "reachy-mini is not installed. Install with `uv sync --extra reachy` "
+            "(or `pip install 'reachy-mini-mcp[reachy]'`)."
+        ) from _reachy_mini_import_error
+
 
 from reachy_elevenlabs import elevenlabs_tts_to_temp_audio_file, load_elevenlabs_config
 

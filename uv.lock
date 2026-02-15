@@ -1521,7 +1521,6 @@ dependencies = [
     { name = "mcp", extra = ["cli"] },
     { name = "numpy" },
     { name = "opencv-python-headless" },
-    { name = "reachy-mini" },
 ]
 
 [package.optional-dependencies]
@@ -1532,6 +1531,9 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "pytest-mock" },
     { name = "ruff" },
+]
+reachy = [
+    { name = "reachy-mini" },
 ]
 
 [package.metadata]
@@ -1545,10 +1547,10 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
     { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.12.0" },
-    { name = "reachy-mini" },
+    { name = "reachy-mini", marker = "extra == 'reachy'" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["reachy", "dev"]
 
 [[package]]
 name = "reachy-mini-motor-controller"

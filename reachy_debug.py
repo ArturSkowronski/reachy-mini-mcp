@@ -11,8 +11,26 @@ from typing import Callable
 
 import cv2
 import httpx
-from reachy_mini import ReachyMini
-from reachy_mini.utils import create_head_pose
+
+try:
+    from reachy_mini import ReachyMini
+    from reachy_mini.utils import create_head_pose
+except Exception as exc:  # pragma: no cover
+    _reachy_mini_import_error = exc
+
+    class ReachyMini:  # type: ignore[no-redef]
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError(
+                "reachy-mini is not installed. Install with `uv sync --extra reachy` "
+                "(or `pip install 'reachy-mini-mcp[reachy]'`)."
+            ) from _reachy_mini_import_error
+
+    def create_head_pose(*args, **kwargs):  # type: ignore[no-redef]
+        raise RuntimeError(
+            "reachy-mini is not installed. Install with `uv sync --extra reachy` "
+            "(or `pip install 'reachy-mini-mcp[reachy]'`)."
+        ) from _reachy_mini_import_error
+
 
 from reachy_elevenlabs import (
     DEFAULT_ELEVENLABS_VOICE_ID,
@@ -811,7 +829,7 @@ def run_demo_suite() -> int:
         run_step(
             name="wake_up",
             announce_text="Now testing robot wake-up behavior.",
-            run_fn=lambda: (mini.wake_up() or "Wake-up animation executed"),
+            run_fn=lambda: mini.wake_up() or "Wake-up animation executed",
         )
         run_step(
             name="move_head",
@@ -888,7 +906,7 @@ def run_demo_suite() -> int:
         run_step(
             name="go_to_sleep",
             announce_text="Finally, testing sleep mode transition.",
-            run_fn=lambda: (mini.goto_sleep() or "Sleep-mode animation executed"),
+            run_fn=lambda: mini.goto_sleep() or "Sleep-mode animation executed",
         )
 
     _build_markdown_report(run_dir, results)
