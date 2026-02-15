@@ -13,10 +13,16 @@ authors = [
 dependencies = [
     "httpx>=0.28.1",
     "mcp[cli]>=1.25.0",
-    "reachy-mini",
+    # Explicitly avoid yanked numpy versions that can break CI installs.
+    "numpy!=2.4.0",
+    "opencv-python-headless>=4.9.0.80",
 ]
 
 [project.optional-dependencies]
+reachy = [
+    # Full Reachy Mini SDK (may pull heavy platform-specific deps).
+    "reachy-mini",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
