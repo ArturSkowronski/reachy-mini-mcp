@@ -12,8 +12,18 @@ import os
 
 
 def disable_zenoh_shared_memory() -> None:
-    """Disable Zenoh shared memory transport globally for this Python process."""
-    import zenoh
+    """Disable Zenoh shared memory transport globally for this Python process.
+
+    If `zenoh` isn't installed (e.g. running unit tests without Reachy SDK
+    extras), this becomes a no-op aside from setting the override env var.
+    """
+    try:
+        import zenoh  # type: ignore
+    except Exception:
+        os.environ.setdefault(
+            "ZENOH_CONFIG_OVERRIDE", "transport/shared_memory/enabled=false"
+        )
+        return
 
     # Also set the override env var so any subprocesses or native layers that
     # consult it will inherit the setting.
