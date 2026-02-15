@@ -273,3 +273,9 @@ uv run python reachy_debug.py
 - Executes a full demo suite in sequence.
 - Saves all captured images and a markdown run summary to `results/run-YYYYMMDD-HHMMSS/`.
 - Generates a single report file for the run: `run_report.md`.
+
+## GitHub Pages
+
+This repo includes a static GitHub Pages site under `docs/` (with the dry-run video embedded).
+
+To publish: GitHub repo Settings -> Pages -> "Build and deployment" -> Source: "Deploy from a branch" -> Branch: `main` -> Folder: `/docs`.

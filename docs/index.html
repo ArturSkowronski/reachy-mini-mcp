@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reachy Mini MCP</title>
+    <meta
+      name="description"
+      content="Control Reachy Mini (robot or simulator) from Claude, ChatGPT, or any MCP-compatible client."
+    />
+
+    <meta property="og:title" content="Reachy Mini MCP" />
+    <meta
+      property="og:description"
+      content="MCP server for Reachy Mini: movement, vision, audio, and debug runner artifacts."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="media/cover.png" />
+
+    <link rel="icon" href="media/cover.png" />
+    <link rel="stylesheet" href="assets/site.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <div class="brand">
+          <img src="media/cover.png" alt="Reachy Mini MCP" />
+          <div>
+            <h1>Reachy Mini MCP</h1>
+            <p>MCP server for Reachy Mini robot or simulator</p>
+          </div>
+        </div>
+        <div class="chips">
+          <div class="chip"><span class="dot"></span> MCP tools + prompts</div>
+          <div class="chip"><span class="dot b"></span> Debug runner artifacts</div>
+        </div>
+      </div>
+
+      <div class="hero">
+        <div class="card pad">
+          <h2 class="title">Drive the robot from your assistant.</h2>
+          <p class="subtitle">
+            Connect Claude, ChatGPT, or any MCP-compatible client and control head movement,
+            antennas, emotions, camera and audio through natural language.
+          </p>
+
+          <div class="quick">
+            <div>
+              <h2>Quickstart (MCP server)</h2>
+              <div class="box">
+                <pre><code>uv sync --extra reachy
+uv run reachy.py</code></pre>
+              </div>
+            </div>
+
+            <div>
+              <h2>Simulator Demo (debug runner)</h2>
+              <div class="box">
+                <pre><code>uv sync --extra reachy-sim
+uv run python reachy_debug.py</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="buttons">
+            <a class="btn primary" href="https://github.com/ArturSkowronski/reachy-mini-mcp">View on GitHub</a>
+            <a class="btn" href="media/dry-run.mp4">Download demo MP4</a>
+          </div>
+        </div>
+
+        <div class="card media">
+          <div class="cap">
+            <strong>Dry run video</strong>
+            <span>Short run of the sequential demo: movement, vision, and artifacts.</span>
+          </div>
+          <div class="inner">
+            <video
+              controls
+              playsinline
+              muted
+              preload="metadata"
+              poster="media/cover.png"
+            >
+              <source src="media/dry-run.mp4" type="video/mp4" />
+              <p>
+                Your browser can’t play this video.
+                <a href="media/dry-run.mp4">Download MP4</a>.
+              </p>
+            </video>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card pad">
+          <h3>What You Get</h3>
+          <ul>
+            <li>Vision: capture image, scan surroundings, face tracking</li>
+            <li>Movement: 6-DoF head, antennas, look-at-point, gestures</li>
+            <li>Audio: play sounds, (optional) ElevenLabs TTS, DoA detection</li>
+            <li>Resources: discover emotions, sounds, limits, capabilities</li>
+          </ul>
+        </div>
+        <div class="card pad">
+          <h3>Links</h3>
+          <ul>
+            <li><a href="https://modelcontextprotocol.io">Model Context Protocol</a></li>
+            <li><a href="https://www.pollen-robotics.com/reachy-mini/">Reachy Mini</a></li>
+            <li><a href="https://docs.astral.sh/uv/">uv</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div>Static page served by GitHub Pages from <code>docs/</code>.</div>
+        <div class="links">
+          <a href="https://github.com/ArturSkowronski/reachy-mini-mcp/blob/main/README.md">README</a>
+          <a href="https://github.com/ArturSkowronski/reachy-mini-mcp/blob/main/reachy.py">reachy.py</a>
+          <a href="https://github.com/ArturSkowronski/reachy-mini-mcp/blob/main/reachy_debug.py">reachy_debug.py</a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+
