@@ -10,7 +10,7 @@ from mcp.types import ToolAnnotations
 from reachy_mini import ReachyMini
 from reachy_mini.utils import create_head_pose
 
-from reachy_elevenlabs import elevenlabs_tts_to_temp_wav, load_elevenlabs_config
+from reachy_elevenlabs import elevenlabs_tts_to_temp_audio_file, load_elevenlabs_config
 
 # Initialize FastMCP server
 mcp = FastMCP("reachy-mini-mcp")
@@ -261,7 +261,7 @@ async def speak_text(
     if style is not None:
         voice_settings["style"] = style
 
-    audio_path = await elevenlabs_tts_to_temp_wav(
+    audio_path = await elevenlabs_tts_to_temp_audio_file(
         text=text,
         config=config,
         voice_settings=voice_settings,

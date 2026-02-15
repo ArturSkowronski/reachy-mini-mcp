@@ -499,21 +499,21 @@ async def test_speak_text_plays_audio_and_cleans_temp_file(mock_reachy, tmp_path
     """Test speak_text generates audio and plays it via Reachy media."""
     from unittest.mock import AsyncMock, patch
 
-    temp_wav = tmp_path / "out.wav"
-    temp_wav.write_bytes(b"not-a-real-wav")
+    temp_audio = tmp_path / "out.mp3"
+    temp_audio.write_bytes(b"not-a-real-audio")
 
     with (
         patch("reachy.load_elevenlabs_config", return_value=MagicMock()),
         patch(
-            "reachy.elevenlabs_tts_to_temp_wav",
-            new=AsyncMock(return_value=str(temp_wav)),
+            "reachy.elevenlabs_tts_to_temp_audio_file",
+            new=AsyncMock(return_value=str(temp_audio)),
         ),
     ):
         result = await speak_text("Hello!")
 
     assert result == "Reachy spoke the provided text via ElevenLabs."
-    mock_reachy.media.play_sound.assert_called_once_with(str(temp_wav))
-    assert not temp_wav.exists()
+    mock_reachy.media.play_sound.assert_called_once_with(str(temp_audio))
+    assert not temp_audio.exists()
 
 
 # ---------------------------------------------------------------------------

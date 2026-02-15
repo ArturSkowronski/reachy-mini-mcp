@@ -13,6 +13,7 @@ authors = [
 dependencies = [
     "httpx>=0.28.1",
     "mcp[cli]>=1.25.0",
+    "opencv-python-headless>=4.9.0.80",
     "reachy-mini",
 ]
 

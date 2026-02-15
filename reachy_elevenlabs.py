@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 from dataclasses import dataclass
 from typing import Any
@@ -37,6 +38,22 @@ def _suffix_for_output_format(output_format: str) -> str:
     return ".mp3"
 
 
+_VOICE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+
+
+def _validate_voice_id(voice_id: str) -> str:
+    # Voice id is interpolated into a URL path. Keep it strict to prevent
+    # path traversal / URL manipulation if a user passes a crafted value.
+    v = voice_id.strip()
+    if not v:
+        raise ValueError("ElevenLabs voice id must be non-empty.")
+    if not _VOICE_ID_RE.fullmatch(v):
+        raise ValueError(
+            "Invalid ElevenLabs voice id. Allowed characters: A-Z a-z 0-9 _ -"
+        )
+    return v
+
+
 def load_elevenlabs_config(
     *,
     api_key: str | None = None,
@@ -46,7 +63,9 @@ def load_elevenlabs_config(
 ) -> ElevenLabsConfig:
     # Support REACHY_* overrides for convenience in robot deployments.
     resolved_api_key = (
-        api_key or os.getenv("REACHY_ELEVENLABS_API_KEY") or os.getenv("ELEVENLABS_API_KEY")
+        api_key
+        or os.getenv("REACHY_ELEVENLABS_API_KEY")
+        or os.getenv("ELEVENLABS_API_KEY")
     )
     resolved_voice_id = (
         voice_id
@@ -62,7 +81,7 @@ def load_elevenlabs_config(
 
     return ElevenLabsConfig(
         api_key=resolved_api_key,
-        voice_id=resolved_voice_id,
+        voice_id=_validate_voice_id(resolved_voice_id),
         model_id=model_id
         or os.getenv("REACHY_ELEVENLABS_MODEL_ID")
         or os.getenv("ELEVENLABS_MODEL_ID")
@@ -107,7 +126,7 @@ async def elevenlabs_tts_bytes(
         return resp.content
 
 
-async def elevenlabs_tts_to_temp_wav(
+async def elevenlabs_tts_to_temp_audio_file(
     *,
     text: str,
     config: ElevenLabsConfig,
@@ -132,3 +151,19 @@ async def elevenlabs_tts_to_temp_wav(
         return tmp.name
     finally:
         tmp.close()
+
+
+async def elevenlabs_tts_to_temp_wav(
+    *,
+    text: str,
+    config: ElevenLabsConfig,
+    voice_settings: dict[str, Any] | None = None,
+    timeout_s: float = 30.0,
+) -> str:
+    # Backwards-compat shim: output may be MP3 depending on `config.output_format`.
+    return await elevenlabs_tts_to_temp_audio_file(
+        text=text,
+        config=config,
+        voice_settings=voice_settings,
+        timeout_s=timeout_s,
+    )

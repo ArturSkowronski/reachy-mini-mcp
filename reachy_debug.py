@@ -17,7 +17,7 @@ from reachy_mini.utils import create_head_pose
 from reachy_elevenlabs import (
     DEFAULT_ELEVENLABS_VOICE_ID,
     ElevenLabsConfig,
-    elevenlabs_tts_to_temp_wav,
+    elevenlabs_tts_to_temp_audio_file,
     load_elevenlabs_config,
 )
 
@@ -144,18 +144,22 @@ def _announce(mini: ReachyMini, message: str) -> None:
             _tts_disabled_reason_logged = True
         return
 
-    wav_path: str | None = None
+    audio_path: str | None = None
     try:
-        print(f"{_c('[TTS][INFO]', _Color.BLUE)} Generating announcement audio via ElevenLabs...")
-        wav_path = asyncio.run(
-            elevenlabs_tts_to_temp_wav(
+        print(
+            f"{_c('[TTS][INFO]', _Color.BLUE)} Generating announcement audio via ElevenLabs..."
+        )
+        audio_path = asyncio.run(
+            elevenlabs_tts_to_temp_audio_file(
                 text=message,
                 config=config,
                 voice_settings={"use_speaker_boost": True, "speed": TTS_SPEED},
             )
         )
-        print(f"{_c('[TTS][INFO]', _Color.BLUE)} Playing announcement audio on Reachy Mini.")
-        mini.media.play_sound(wav_path)
+        print(
+            f"{_c('[TTS][INFO]', _Color.BLUE)} Playing announcement audio on Reachy Mini."
+        )
+        mini.media.play_sound(audio_path)
     except Exception as exc:  # pragma: no cover - best effort voice announcement
         err = str(exc)
         if "403" in err:
@@ -163,24 +167,28 @@ def _announce(mini: ReachyMini, message: str) -> None:
                 f"{_c('[TTS][ERROR]', _Color.RED + _Color.BOLD)} "
                 "ElevenLabs returned 403 Forbidden. Check API key permissions/plan or output format."
             )
-            print(f"{_c('[TTS][INFO]', _Color.BLUE)} Disabling TTS for the rest of this run.")
+            print(
+                f"{_c('[TTS][INFO]', _Color.BLUE)} Disabling TTS for the rest of this run."
+            )
         else:
-            print(f"{_c('[TTS][ERROR]', _Color.RED + _Color.BOLD)} Announcement failed: {exc}")
+            print(
+                f"{_c('[TTS][ERROR]', _Color.RED + _Color.BOLD)} Announcement failed: {exc}"
+            )
         _tts_runtime_disabled = True
     finally:
-        if wav_path:
+        if audio_path:
             try:
-                os.remove(wav_path)
+                os.remove(audio_path)
             except FileNotFoundError:
                 pass
 
 
 def _shout_debug_run(mini: ReachyMini, cfg: ElevenLabsConfig) -> None:
-    wav_path: str | None = None
+    audio_path: str | None = None
     try:
         print(f"{_c('[TTS][INFO]', _Color.BLUE)} Speaking intro: Debug Run")
-        wav_path = asyncio.run(
-            elevenlabs_tts_to_temp_wav(
+        audio_path = asyncio.run(
+            elevenlabs_tts_to_temp_audio_file(
                 text="Debug Run.",
                 config=cfg,
                 voice_settings={
@@ -191,13 +199,15 @@ def _shout_debug_run(mini: ReachyMini, cfg: ElevenLabsConfig) -> None:
                 },
             )
         )
-        mini.media.play_sound(wav_path)
+        mini.media.play_sound(audio_path)
     except Exception as exc:  # pragma: no cover
-        print(f"{_c('[TTS][WARN]', _Color.YELLOW + _Color.BOLD)} Intro speech failed: {exc}")
+        print(
+            f"{_c('[TTS][WARN]', _Color.YELLOW + _Color.BOLD)} Intro speech failed: {exc}"
+        )
     finally:
-        if wav_path:
+        if audio_path:
             try:
-                os.remove(wav_path)
+                os.remove(audio_path)
             except FileNotFoundError:
                 pass
 
@@ -212,7 +222,9 @@ def _print_banner(run_dir: Path) -> None:
 
 
 def _print_preflight_report(checks: list[PreflightCheck]) -> bool:
-    print(f"{_c('[PRECHECK]', _Color.MAGENTA + _Color.BOLD)} Configuration and readiness checks")
+    print(
+        f"{_c('[PRECHECK]', _Color.MAGENTA + _Color.BOLD)} Configuration and readiness checks"
+    )
     print("-" * 61)
     for item in checks:
         badge = _status_badge(item.status)
@@ -222,7 +234,9 @@ def _print_preflight_report(checks: list[PreflightCheck]) -> bool:
     fail_count = sum(1 for c in checks if c.status == "FAIL")
     warn_count = sum(1 for c in checks if c.status == "WARN")
     summary = f"{len(checks)} checks, {warn_count} warning(s), {fail_count} failure(s)"
-    print(f"{_c('[PRECHECK] Summary:', _Color.MAGENTA + _Color.BOLD)} {_c(summary, (_Color.GREEN if fail_count == 0 else _Color.RED) + _Color.BOLD)}")
+    print(
+        f"{_c('[PRECHECK] Summary:', _Color.MAGENTA + _Color.BOLD)} {_c(summary, (_Color.GREEN if fail_count == 0 else _Color.RED) + _Color.BOLD)}"
+    )
     print("-" * 61)
     return fail_count == 0
 
@@ -254,13 +268,17 @@ def _run_preflight_checks(mini: ReachyMini, run_dir: Path) -> bool:
 
     # ElevenLabs config checks
     api_key = os.getenv("REACHY_ELEVENLABS_API_KEY") or os.getenv("ELEVENLABS_API_KEY")
-    voice_id = os.getenv("REACHY_ELEVENLABS_VOICE_ID") or os.getenv("ELEVENLABS_VOICE_ID")
+    voice_id = os.getenv("REACHY_ELEVENLABS_VOICE_ID") or os.getenv(
+        "ELEVENLABS_VOICE_ID"
+    )
     checks.append(
         PreflightCheck(
             name="elevenlabs_api_key",
             status="OK" if api_key else "WARN",
             details=(
-                f"Set (...{api_key[-4:]})" if api_key else "Missing (TTS announcements disabled)"
+                f"Set (...{api_key[-4:]})"
+                if api_key
+                else "Missing (TTS announcements disabled)"
             ),
         )
     )
@@ -271,10 +289,7 @@ def _run_preflight_checks(mini: ReachyMini, run_dir: Path) -> bool:
             details=(
                 f"Set ({voice_id})"
                 if voice_id
-                else (
-                    "Not set in env, using default "
-                    f"({DEFAULT_ELEVENLABS_VOICE_ID})"
-                )
+                else (f"Not set in env, using default ({DEFAULT_ELEVENLABS_VOICE_ID})")
             ),
         )
     )
@@ -333,7 +348,9 @@ def _run_preflight_checks(mini: ReachyMini, run_dir: Path) -> bool:
     def _tts_probe(cfg: ElevenLabsConfig) -> tuple[int, dict]:
         assert api_key
         url = f"https://api.elevenlabs.io/v1/text-to-speech/{cfg.voice_id}"
-        accept = "audio/wav" if cfg.output_format.lower().startswith("wav") else "audio/mpeg"
+        accept = (
+            "audio/wav" if cfg.output_format.lower().startswith("wav") else "audio/mpeg"
+        )
         headers = {
             "xi-api-key": api_key,
             "Content-Type": "application/json",
@@ -341,7 +358,12 @@ def _run_preflight_checks(mini: ReachyMini, run_dir: Path) -> bool:
         }
         payload = {"text": "Debug run.", "model_id": cfg.model_id}
         with httpx.Client(timeout=15.0) as client:
-            resp = client.post(url, params={"output_format": cfg.output_format}, headers=headers, json=payload)
+            resp = client.post(
+                url,
+                params={"output_format": cfg.output_format},
+                headers=headers,
+                json=payload,
+            )
         if resp.status_code == 200:
             return 200, {"ok": True, "bytes": len(resp.content)}
         try:
@@ -351,18 +373,40 @@ def _run_preflight_checks(mini: ReachyMini, run_dir: Path) -> bool:
 
     # Permission / capability checks (only if key is set and config resolved)
     if api_key and resolved_cfg:
-        status, body = _http_json(f"https://api.elevenlabs.io/v1/voices/{resolved_cfg.voice_id}")
+        status, body = _http_json(
+            f"https://api.elevenlabs.io/v1/voices/{resolved_cfg.voice_id}"
+        )
         if status == 200:
-            checks.append(PreflightCheck("elevenlabs_voice_access", "OK", f"voice={body.get('name', 'unknown')}"))
+            checks.append(
+                PreflightCheck(
+                    "elevenlabs_voice_access",
+                    "OK",
+                    f"voice={body.get('name', 'unknown')}",
+                )
+            )
         else:
-            checks.append(PreflightCheck("elevenlabs_voice_access", "WARN", f"HTTP {status}: {body.get('detail', body)}"))
+            checks.append(
+                PreflightCheck(
+                    "elevenlabs_voice_access",
+                    "WARN",
+                    f"HTTP {status}: {body.get('detail', body)}",
+                )
+            )
 
         status, body = _tts_probe(resolved_cfg)
         if status == 200:
-            checks.append(PreflightCheck("elevenlabs_tts_probe", "OK", f"ok (bytes={body.get('bytes')})"))
+            checks.append(
+                PreflightCheck(
+                    "elevenlabs_tts_probe", "OK", f"ok (bytes={body.get('bytes')})"
+                )
+            )
         else:
             detail = body.get("detail", body)
-            checks.append(PreflightCheck("elevenlabs_tts_probe", "WARN", f"HTTP {status}: {detail}"))
+            checks.append(
+                PreflightCheck(
+                    "elevenlabs_tts_probe", "WARN", f"HTTP {status}: {detail}"
+                )
+            )
 
     # OpenCV face detector readiness
     cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
@@ -405,14 +449,24 @@ def _run_preflight_checks(mini: ReachyMini, run_dir: Path) -> bool:
         )
 
     try:
-        angle, speech = mini.media.audio.get_DoA()
-        checks.append(
-            PreflightCheck(
-                name="reachy_audio_doa",
-                status="OK",
-                details=f"angle={angle:.2f} rad, speech={speech}",
+        doa = mini.media.audio.get_DoA()
+        if doa is None:
+            checks.append(
+                PreflightCheck(
+                    name="reachy_audio_doa",
+                    status="WARN",
+                    details="Not available on this audio hardware/backend",
+                )
             )
-        )
+        else:
+            angle, speech = doa
+            checks.append(
+                PreflightCheck(
+                    name="reachy_audio_doa",
+                    status="OK",
+                    details=f"angle={angle:.2f} rad, speech={speech}",
+                )
+            )
     except Exception as exc:
         checks.append(
             PreflightCheck(
@@ -443,11 +497,15 @@ def _run_preflight_checks(mini: ReachyMini, run_dir: Path) -> bool:
 
     # If ElevenLabs is usable, have the robot say "Debug Run" once.
     if api_key and resolved_cfg:
-        probe_ok = any(c.name == "elevenlabs_tts_probe" and c.status == "OK" for c in checks)
+        probe_ok = any(
+            c.name == "elevenlabs_tts_probe" and c.status == "OK" for c in checks
+        )
         if probe_ok:
             _shout_debug_run(mini, resolved_cfg)
         else:
-            print(f"{_c('[TTS][INFO]', _Color.BLUE)} TTS not ready; continuing without spoken intro. See PRECHECK warnings above.")
+            print(
+                f"{_c('[TTS][INFO]', _Color.BLUE)} TTS not ready; continuing without spoken intro. See PRECHECK warnings above."
+            )
 
     return ok
 
@@ -597,6 +655,56 @@ def _step_track_face(mini: ReachyMini) -> str:
     return f"Face tracked: moved to yaw={yaw:+.1f}°, pitch={pitch:+.1f}°"
 
 
+def _step_move_antennas(mini: ReachyMini) -> str:
+    mini.goto_target(antennas=[0.8, -0.8], duration=0.4)
+    mini.goto_target(antennas=[-0.8, 0.8], duration=0.4)
+    mini.goto_target(antennas=[0, 0], duration=0.4)
+    return "Antenna sequence executed"
+
+
+def _step_look_at_point(mini: ReachyMini) -> str:
+    mini.look_at_world(0.5, 0.0, 0.1, duration=1.0)
+    return "Look-at executed"
+
+
+def _step_nod(mini: ReachyMini) -> str:
+    mini.goto_target(
+        head=create_head_pose(pitch=15, mm=True, degrees=True), duration=0.3
+    )
+    mini.goto_target(
+        head=create_head_pose(pitch=-10, mm=True, degrees=True), duration=0.3
+    )
+    mini.goto_target(head=create_head_pose(mm=True, degrees=True), duration=0.3)
+    return "Nod gesture executed"
+
+
+def _step_shake_head(mini: ReachyMini) -> str:
+    mini.goto_target(
+        head=create_head_pose(yaw=-20, mm=True, degrees=True), duration=0.3
+    )
+    mini.goto_target(head=create_head_pose(yaw=20, mm=True, degrees=True), duration=0.3)
+    mini.goto_target(head=create_head_pose(mm=True, degrees=True), duration=0.3)
+    return "Shake-head gesture executed"
+
+
+def _step_detect_sound_direction(mini: ReachyMini) -> str:
+    doa = mini.media.audio.get_DoA()
+    if doa is None:
+        return "Sound direction (DoA) not available on this audio hardware/backend"
+    angle, speech = doa
+    return f"Detected angle={angle:.2f} rad, speech={speech}"
+
+
+def _step_barrel_roll(mini: ReachyMini) -> str:
+    mini.goto_target(
+        head=create_head_pose(z=20, roll=10, mm=True, degrees=True), duration=1.0
+    )
+    mini.goto_target(antennas=[0.6, -0.6], duration=0.3)
+    mini.goto_target(antennas=[-0.6, 0.6], duration=0.3)
+    mini.goto_target(head=create_head_pose(), antennas=[0, 0], duration=1.0)
+    return "Barrel roll sequence executed"
+
+
 def _execute_step(
     mini: ReachyMini,
     name: str,
@@ -606,7 +714,9 @@ def _execute_step(
     step_no: int,
     total_steps: int,
 ) -> None:
-    print(f"{_c(f'[STEP {step_no:02d}/{total_steps:02d}]', _Color.MAGENTA + _Color.BOLD)} {name}")
+    print(
+        f"{_c(f'[STEP {step_no:02d}/{total_steps:02d}]', _Color.MAGENTA + _Color.BOLD)} {name}"
+    )
     _announce(mini, announce_text)
     time.sleep(ANNOUNCE_PAUSE_S)
     started = _utc_now_iso()
@@ -680,7 +790,9 @@ def run_demo_suite() -> int:
         print(f"{_c('[INFO]', _Color.BLUE)} Connected to Reachy Mini / simulator")
         precheck_ok = _run_preflight_checks(mini, run_dir)
         if not precheck_ok:
-            print(f"{_c('[FATAL]', _Color.RED + _Color.BOLD)} Precheck failed. Aborting debug run before demo steps.")
+            print(
+                f"{_c('[FATAL]', _Color.RED + _Color.BOLD)} Precheck failed. Aborting debug run before demo steps."
+            )
             return 1
 
         def run_step(name: str, announce_text: str, run_fn: Callable[[], str]) -> None:
@@ -724,53 +836,22 @@ def run_demo_suite() -> int:
         run_step(
             name="move_antennas",
             announce_text="Now testing antenna movement.",
-            run_fn=lambda: (
-                mini.goto_target(antennas=[0.8, -0.8], duration=0.4),
-                mini.goto_target(antennas=[-0.8, 0.8], duration=0.4),
-                mini.goto_target(antennas=[0, 0], duration=0.4),
-                "Antenna sequence executed",
-            )[-1],
+            run_fn=lambda: _step_move_antennas(mini),
         )
         run_step(
             name="look_at_point",
             announce_text="Now testing look-at-point behavior in 3D space.",
-            run_fn=lambda: (
-                mini.look_at_world(0.5, 0.0, 0.1, duration=1.0),
-                "Look-at executed",
-            )[-1],
+            run_fn=lambda: _step_look_at_point(mini),
         )
         run_step(
             name="gesture_nod",
             announce_text="Now testing nod gesture.",
-            run_fn=lambda: (
-                mini.goto_target(
-                    head=create_head_pose(pitch=15, mm=True, degrees=True), duration=0.3
-                ),
-                mini.goto_target(
-                    head=create_head_pose(pitch=-10, mm=True, degrees=True),
-                    duration=0.3,
-                ),
-                mini.goto_target(
-                    head=create_head_pose(mm=True, degrees=True), duration=0.3
-                ),
-                "Nod gesture executed",
-            )[-1],
+            run_fn=lambda: _step_nod(mini),
         )
         run_step(
             name="gesture_shake_head",
             announce_text="Now testing shake-head gesture.",
-            run_fn=lambda: (
-                mini.goto_target(
-                    head=create_head_pose(yaw=-20, mm=True, degrees=True), duration=0.3
-                ),
-                mini.goto_target(
-                    head=create_head_pose(yaw=20, mm=True, degrees=True), duration=0.3
-                ),
-                mini.goto_target(
-                    head=create_head_pose(mm=True, degrees=True), duration=0.3
-                ),
-                "Shake-head gesture executed",
-            )[-1],
+            run_fn=lambda: _step_shake_head(mini),
         )
         run_step(
             name="play_sound",
@@ -782,11 +863,7 @@ def run_demo_suite() -> int:
         run_step(
             name="detect_sound_direction",
             announce_text="Now testing sound direction detection.",
-            run_fn=lambda: (
-                lambda angle_speech: (
-                    f"Detected angle={angle_speech[0]:.2f} rad, speech={angle_speech[1]}"
-                )
-            )(mini.media.audio.get_DoA()),
+            run_fn=lambda: _step_detect_sound_direction(mini),
         )
         run_step(
             name="capture_image",
@@ -806,18 +883,7 @@ def run_demo_suite() -> int:
         run_step(
             name="do_barrel_roll",
             announce_text="Now testing barrel-roll sequence.",
-            run_fn=lambda: (
-                mini.goto_target(
-                    head=create_head_pose(z=20, roll=10, mm=True, degrees=True),
-                    duration=1.0,
-                ),
-                mini.goto_target(antennas=[0.6, -0.6], duration=0.3),
-                mini.goto_target(antennas=[-0.6, 0.6], duration=0.3),
-                mini.goto_target(
-                    head=create_head_pose(), antennas=[0, 0], duration=1.0
-                ),
-                "Barrel roll sequence executed",
-            )[-1],
+            run_fn=lambda: _step_barrel_roll(mini),
         )
         run_step(
             name="go_to_sleep",
