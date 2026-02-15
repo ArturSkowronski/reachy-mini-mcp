@@ -799,7 +799,6 @@ def _build_markdown_report(run_dir: Path, results: list[StepResult]) -> None:
 def run_demo_suite() -> int:
     run_dir = _create_run_dir()
     results: list[StepResult] = []
-    total_steps = 13
     step_no = 0
 
     with ReachyMini() as mini:
@@ -825,88 +824,88 @@ def run_demo_suite() -> int:
                 total_steps=total_steps,
             )
 
-        run_step(
-            name="wake_up",
-            announce_text="Now testing robot wake-up behavior.",
-            run_fn=lambda: mini.wake_up() or "Wake-up animation executed",
-        )
-        run_step(
-            name="move_head",
-            announce_text="Now testing 6-DoF head movement.",
-            run_fn=lambda: (
-                mini.goto_target(
-                    head=create_head_pose(
-                        x=10,
-                        y=0,
-                        z=15,
-                        roll=8,
-                        pitch=-10,
-                        yaw=20,
-                        mm=True,
-                        degrees=True,
-                    ),
-                    duration=1.0,
-                )
-                or "Head pose executed"
+        demo_steps: list[tuple[str, str, Callable[[], str]]] = [
+            (
+                "wake_up",
+                "Now testing robot wake-up behavior.",
+                lambda: mini.wake_up() or "Wake-up animation executed",
             ),
-        )
-        run_step(
-            name="move_antennas",
-            announce_text="Now testing antenna movement.",
-            run_fn=lambda: _step_move_antennas(mini),
-        )
-        run_step(
-            name="look_at_point",
-            announce_text="Now testing look-at-point behavior in 3D space.",
-            run_fn=lambda: _step_look_at_point(mini),
-        )
-        run_step(
-            name="gesture_nod",
-            announce_text="Now testing nod gesture.",
-            run_fn=lambda: _step_nod(mini),
-        )
-        run_step(
-            name="gesture_shake_head",
-            announce_text="Now testing shake-head gesture.",
-            run_fn=lambda: _step_shake_head(mini),
-        )
-        run_step(
-            name="play_sound",
-            announce_text="Now testing onboard audio playback.",
-            run_fn=lambda: (
-                mini.media.play_sound("count.wav") or "Sound played: count.wav"
+            (
+                "move_head",
+                "Now testing 6-DoF head movement.",
+                lambda: (
+                    mini.goto_target(
+                        head=create_head_pose(
+                            x=10,
+                            y=0,
+                            z=15,
+                            roll=8,
+                            pitch=-10,
+                            yaw=20,
+                            mm=True,
+                            degrees=True,
+                        ),
+                        duration=1.0,
+                    )
+                    or "Head pose executed"
+                ),
             ),
-        )
-        run_step(
-            name="detect_sound_direction",
-            announce_text="Now testing sound direction detection.",
-            run_fn=lambda: _step_detect_sound_direction(mini),
-        )
-        run_step(
-            name="capture_image",
-            announce_text="Now testing single camera capture.",
-            run_fn=lambda: _step_capture_image(mini, run_dir),
-        )
-        run_step(
-            name="scan_surroundings",
-            announce_text="Now testing panoramic surroundings scan.",
-            run_fn=lambda: _step_scan_surroundings(mini, run_dir),
-        )
-        run_step(
-            name="track_face",
-            announce_text="Now testing face tracking.",
-            run_fn=lambda: _step_track_face(mini),
-        )
-        run_step(
-            name="do_barrel_roll",
-            announce_text="Now testing barrel-roll sequence.",
-            run_fn=lambda: _step_barrel_roll(mini),
-        )
-        run_step(
-            name="go_to_sleep",
-            announce_text="Finally, testing sleep mode transition.",
-            run_fn=lambda: mini.goto_sleep() or "Sleep-mode animation executed",
-        )
+            (
+                "move_antennas",
+                "Now testing antenna movement.",
+                lambda: _step_move_antennas(mini),
+            ),
+            (
+                "look_at_point",
+                "Now testing look-at-point behavior in 3D space.",
+                lambda: _step_look_at_point(mini),
+            ),
+            ("gesture_nod", "Now testing nod gesture.", lambda: _step_nod(mini)),
+            (
+                "gesture_shake_head",
+                "Now testing shake-head gesture.",
+                lambda: _step_shake_head(mini),
+            ),
+            (
+                "play_sound",
+                "Now testing onboard audio playback.",
+                lambda: mini.media.play_sound("count.wav") or "Sound played: count.wav",
+            ),
+            (
+                "detect_sound_direction",
+                "Now testing sound direction detection.",
+                lambda: _step_detect_sound_direction(mini),
+            ),
+            (
+                "capture_image",
+                "Now testing single camera capture.",
+                lambda: _step_capture_image(mini, run_dir),
+            ),
+            (
+                "scan_surroundings",
+                "Now testing panoramic surroundings scan.",
+                lambda: _step_scan_surroundings(mini, run_dir),
+            ),
+            (
+                "track_face",
+                "Now testing face tracking.",
+                lambda: _step_track_face(mini),
+            ),
+            (
+                "do_barrel_roll",
+                "Now testing barrel-roll sequence.",
+                lambda: _step_barrel_roll(mini),
+            ),
+            (
+                "go_to_sleep",
+                "Finally, testing sleep mode transition.",
+                lambda: mini.goto_sleep() or "Sleep-mode animation executed",
+            ),
+        ]
+
+        total_steps = len(demo_steps)
+        for name, announce_text, run_fn in demo_steps:
+            run_step(name=name, announce_text=announce_text, run_fn=run_fn)
 
     _build_markdown_report(run_dir, results)
     return 0 if all(r.status == "PASS" for r in results) else 1
